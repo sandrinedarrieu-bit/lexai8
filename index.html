@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexAI — Rédaction de documents juridiques</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-primary: #ffffff; --bg-secondary: #f7f7f5; --bg-tertiary: #f0efe9;
+    --bg-info: #eff6ff; --bg-success: #f0fdf4;
+    --text-primary: #1a1a18; --text-secondary: #6b6b65; --text-tertiary: #9b9b94;
+    --text-info: #1d4ed8; --text-success: #15803d;
+    --border: rgba(0,0,0,0.12); --border-md: rgba(0,0,0,0.2);
+    --radius-md: 8px; --radius-lg: 12px;
+    --accent: #4F46E5; --accent-dark: #4338CA; --accent-light: #EEF2FF;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1c1c1a; --bg-secondary: #252523; --bg-tertiary: #111110;
+      --bg-info: #1e2a3a; --bg-success: #1a2e1e;
+      --text-primary: #f0ede8; --text-secondary: #a0a099; --text-tertiary: #6b6b65;
+      --text-info: #93c5fd; --text-success: #86efac;
+      --border: rgba(255,255,255,0.1); --border-md: rgba(255,255,255,0.18);
+      --accent-light: #1e1b4b;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-tertiary); color: var(--text-primary); height: 100vh; overflow: hidden; }
+  .app { display: flex; height: 100vh; }
+
+  /* Sidebar */
+  .sidebar { width: 220px; min-width: 220px; background: var(--bg-primary); border-right: 0.5px solid var(--border); display: flex; flex-direction: column; }
+  .logo { padding: 18px 16px 14px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .logo-icon { width: 28px; height: 28px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .logo-icon i { color: #fff; font-size: 15px; }
+  .logo-text { font-size: 15px; font-weight: 500; color: var(--text-primary); }
+  .logo-badge { font-size: 10px; background: var(--bg-info); color: var(--text-info); padding: 2px 6px; border-radius: 4px; }
+  .nav { padding: 12px 8px; flex: 1; }
+  .nav-section { font-size: 11px; color: var(--text-tertiary); padding: 4px 8px 6px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: var(--radius-md); cursor: pointer; font-size: 13px; color: var(--text-secondary); margin-bottom: 1px; border: none; background: none; width: 100%; text-align: left; }
+  .nav-item:hover { background: var(--bg-secondary); color: var(--text-primary); }
+  .nav-item.active { background: var(--accent-light); color: var(--accent); }
+  .nav-item i { font-size: 16px; }
+  .sidebar-footer { padding: 12px 8px; border-top: 0.5px solid var(--border); }
+  .user-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--radius-md); }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-light); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; color: var(--accent); flex-shrink: 0; }
+  .user-name { font-size: 12px; font-weight: 500; color: var(--text-primary); }
+  .user-plan { font-size: 11px; color: var(--text-tertiary); }
+
+  /* Main */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+  .topbar { background: var(--bg-primary); border-bottom: 0.5px solid var(--border); padding: 0 24px; height: 52px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .topbar-title { font-size: 15px; font-weight: 500; color: var(--text-primary); }
+  .topbar-actions { display: flex; gap: 8px; align-items: center; }
+  .btn { padding: 6px 14px; border-radius: var(--radius-md); font-size: 13px; cursor: pointer; border: 0.5px solid var(--border-md); background: transparent; color: var(--text-primary); display: inline-flex; align-items: center; gap: 5px; }
+  .btn:hover { background: var(--bg-secondary); }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-dark); }
+  .btn-danger { background: #FEF2F2; color: #991B1B; border-color: #FECACA; }
+  .btn-danger:hover { background: #FEE2E2; }
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Config banner */
+  .config-banner { background: #FFFBEB; border: 0.5px solid #FDE68A; border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #92400E; }
+  .config-banner i { font-size: 15px; flex-shrink: 0; }
+  .config-banner a { color: #92400E; font-weight: 500; }
+
+  /* Client autocomplete */
+  .autocomplete-wrap { position: relative; }
+  .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-primary); border: 0.5px solid var(--border-md); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 50; max-height: 200px; overflow-y: auto; margin-top: 2px; }
+  .autocomplete-item { padding: 8px 12px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+  .autocomplete-item:hover { background: var(--bg-secondary); }
+  .autocomplete-item .ac-name { font-weight: 500; color: var(--text-primary); }
+  .autocomplete-item .ac-sub { font-size: 11px; color: var(--text-tertiary); }
+  .autocomplete-item i { font-size: 14px; color: var(--accent); flex-shrink: 0; }
+  .autocomplete-new { padding: 8px 12px; font-size: 12px; color: var(--accent); cursor: pointer; border-top: 0.5px solid var(--border); display: flex; align-items: center; gap: 6px; }
+  .autocomplete-new:hover { background: var(--accent-light); }
+
+  /* Doc grid */
+  .doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .doc-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px 14px; cursor: pointer; transition: border-color 0.15s; }
+  .doc-card:hover { border-color: var(--accent); }
+  .doc-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+  .doc-icon i { font-size: 18px; }
+  .ic-blue { background: #EEF2FF; color: #4F46E5; }
+  .ic-teal { background: #E6FAF5; color: #0F6E56; }
+  .ic-amber { background: #FEF9EC; color: #B45309; }
+  .ic-coral { background: #FEF0EC; color: #C2410C; }
+  .ic-pink { background: #FDF2F8; color: #9D174D; }
+  .doc-name { font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 3px; }
+  .doc-desc { font-size: 11px; color: var(--text-tertiary); }
+  .section-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 10px; letter-spacing: 0.02em; text-transform: uppercase; }
+
+  /* Form */
+  .form-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 80px; }
+  .form-title { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+  .client-selector { background: var(--accent-light); border: 0.5px solid #C7D2FE; border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 16px; }
+  .client-selector-label { font-size: 11px; color: var(--accent); font-weight: 500; margin-bottom: 6px; letter-spacing: 0.03em; text-transform: uppercase; }
+  .client-selected { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+  .client-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; flex-shrink: 0; }
+  .client-selected-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .client-selected-sub { font-size: 11px; color: var(--text-secondary); }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-full { grid-column: 1 / -1; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 12px; color: var(--text-secondary); }
+  .field input, .field select, .field textarea { font-size: 13px; padding: 7px 10px; border-radius: var(--radius-md); border: 0.5px solid var(--border-md); background: var(--bg-primary); color: var(--text-primary); width: 100%; font-family: inherit; }
+  .field textarea { resize: vertical; min-height: 70px; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,70,229,0.12); }
+  .field-prefilled input, .field-prefilled select { background: #F9FAFB; border-color: #D1FAE5; color: var(--text-secondary); }
+
+  /* Generate bar */
+  .generate-bar { position: fixed; bottom: 0; left: 220px; right: 0; background: var(--bg-primary); border-top: 0.5px solid var(--border); padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+  .generate-hint { font-size: 12px; color: var(--text-tertiary); display: flex; align-items: center; gap: 4px; }
+
+  /* Output */
+  .output-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+  .output-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 0.5px solid var(--border); flex-wrap: wrap; gap: 8px; }
+  .output-title { font-size: 13px; font-weight: 500; color: var(--text-primary); font-family: monospace; }
+  .output-actions { display: flex; gap: 6px; }
+  .output-body { font-size: 13px; color: var(--text-primary); line-height: 1.7; white-space: pre-wrap; max-height: 420px; overflow-y: auto; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+  .badge-success { background: var(--bg-success); color: var(--text-success); }
+  .badge-info { background: var(--bg-info); color: var(--text-info); }
+
+  /* Clients page */
+  .clients-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+  .client-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+  .client-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .client-card-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; flex-shrink: 0; }
+  .client-card-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .client-card-type { font-size: 11px; color: var(--text-tertiary); }
+  .client-card-body { font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
+  .client-card-actions { margin-top: 10px; display: flex; gap: 6px; }
+
+  /* History */
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+  .history-item { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+  .history-icon { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: var(--accent-light); flex-shrink: 0; }
+  .history-icon i { font-size: 15px; color: var(--accent); }
+  .history-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .history-meta { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+  .history-date { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 100; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--bg-primary); border-radius: var(--radius-lg); padding: 24px; width: 480px; max-width: 92vw; border: 0.5px solid var(--border-md); max-height: 90vh; overflow-y: auto; }
+  .modal h2 { font-size: 15px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .modal-full { grid-column: 1 / -1; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+  .modal-field { display: flex; flex-direction: column; gap: 4px; }
+  .modal-field label { font-size: 12px; color: var(--text-secondary); }
+  .modal-field input, .modal-field select { font-size: 13px; padding: 7px 10px; border-radius: var(--radius-md); border: 0.5px solid var(--border-md); background: var(--bg-primary); color: var(--text-primary); width: 100%; font-family: inherit; }
+  .modal-field input:focus, .modal-field select:focus { outline: none; border-color: var(--accent); }
+
+  /* Settings */
+  .settings-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 12px; }
+  .settings-title { font-size: 14px; font-weight: 500; margin-bottom: 12px; color: var(--text-primary); }
+  .settings-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .settings-field label { font-size: 12px; color: var(--text-secondary); }
+  .settings-field input { font-size: 13px; padding: 7px 10px; border-radius: var(--radius-md); border: 0.5px solid var(--border-md); background: var(--bg-primary); color: var(--text-primary); width: 100%; font-family: monospace; }
+  .settings-field input:focus { outline: none; border-color: var(--accent); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+  .status-ok { background: #22C55E; }
+  .status-err { background: #EF4444; }
+
+  /* Steps */
+  .step-indicator { display: flex; align-items: center; gap: 6px; margin-bottom: 20px; }
+  .step { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-tertiary); }
+  .step.active { color: var(--accent); font-weight: 500; }
+  .step.done { color: var(--text-success); }
+  .step-dot { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; }
+  .step-sep { flex: 1; height: 1px; background: var(--border); }
+  .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: -2px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-tertiary); }
+  .empty-state i { font-size: 32px; margin-bottom: 10px; display: block; }
+  .empty-state p { font-size: 13px; }
+
+  @media (max-width: 600px) {
+    .sidebar { width: 52px; min-width: 52px; }
+    .logo-text, .logo-badge, .nav-section { display: none; }
+    .nav-item span { display: none; }
+    .nav-item { justify-content: center; padding: 10px; }
+    .generate-bar { left: 52px; }
+    .form-grid, .modal-grid { grid-template-columns: 1fr; }
+    .form-full, .modal-full { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Modal nouveau client -->
+<div class="modal-overlay" id="modal-client">
+  <div class="modal">
+    <h2><i class="ti ti-user-plus" style="color:var(--accent);"></i> Nouveau client</h2>
+    <div class="modal-grid">
+      <div class="modal-field modal-full">
+        <label>Type</label>
+        <select id="nc-type" onchange="toggleClientType()">
+          <option value="societe">Société</option>
+          <option value="particulier">Particulier</option>
+        </select>
+      </div>
+      <div class="modal-field modal-full" id="nc-raison-wrap">
+        <label>Raison sociale</label>
+        <input type="text" id="nc-raison" placeholder="Société ABC SAS">
+      </div>
+      <div class="modal-field">
+        <label>Prénom</label>
+        <input type="text" id="nc-prenom" placeholder="Jean">
+      </div>
+      <div class="modal-field">
+        <label>Nom</label>
+        <input type="text" id="nc-nom" placeholder="Dupont">
+      </div>
+      <div class="modal-field" id="nc-siret-wrap">
+        <label>SIRET</label>
+        <input type="text" id="nc-siret" placeholder="123 456 789 00012">
+      </div>
+      <div class="modal-field" id="nc-forme-wrap">
+        <label>Forme juridique</label>
+        <select id="nc-forme">
+          <option>SAS</option><option>SARL</option><option>SASU</option><option>EURL</option><option>SA</option><option>SCI</option><option>Autre</option>
+        </select>
+      </div>
+      <div class="modal-field modal-full">
+        <label>Adresse</label>
+        <input type="text" id="nc-adresse" placeholder="12 rue de la Paix">
+      </div>
+      <div class="modal-field">
+        <label>Code postal</label>
+        <input type="text" id="nc-cp" placeholder="75001">
+      </div>
+      <div class="modal-field">
+        <label>Ville</label>
+        <input type="text" id="nc-ville" placeholder="Paris">
+      </div>
+      <div class="modal-field">
+        <label>Email</label>
+        <input type="email" id="nc-email" placeholder="contact@societe.fr">
+      </div>
+      <div class="modal-field">
+        <label>Téléphone</label>
+        <input type="text" id="nc-tel" placeholder="06 12 34 56 78">
+      </div>
+      <div class="modal-field modal-full">
+        <label>Représentant légal / Contact</label>
+        <input type="text" id="nc-representant" placeholder="Marie Martin, Directrice générale">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-client')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveClient()" id="btn-save-client">
+        <i class="ti ti-check"></i> Enregistrer
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-icon"><i class="ti ti-scale"></i></div>
+      <span class="logo-text">LexAI</span>
+      <span class="logo-badge">Beta</span>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">Principal</div>
+      <button class="nav-item active" data-page="generate" id="nav-generate">
+        <i class="ti ti-file-plus"></i> <span>Nouveau document</span>
+      </button>
+      <button class="nav-item" data-page="clients" id="nav-clients">
+        <i class="ti ti-users"></i> <span>Clients</span>
+      </button>
+      <button class="nav-item" data-page="history" id="nav-history">
+        <i class="ti ti-clock"></i> <span>Historique</span>
+      </button>
+      <div class="nav-section" style="margin-top:12px;">Compte</div>
+      <button class="nav-item" data-page="settings" id="nav-settings">
+        <i class="ti ti-settings"></i> <span>Paramètres</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="avatar">MD</div>
+        <div class="user-info">
+          <div class="user-name">Me. Dupont</div>
+          <div class="user-plan" id="db-status-label">Non connecté</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title" id="topbar-title">Nouveau document</span>
+      <div class="topbar-actions">
+        <button class="btn btn-primary" data-action="new">
+          <i class="ti ti-plus"></i> Nouveau
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- PAGE GENERATE -->
+      <div class="page active" id="page-generate">
+        <div id="config-warn" class="config-banner" style="display:none;">
+          <i class="ti ti-alert-triangle"></i>
+          Base de données non configurée. <a href="#" onclick="window.showPage('settings')">Configurer Supabase →</a>
+        </div>
+        <div class="step-indicator">
+          <div class="step done" id="step1"><div class="step-dot"><i class="ti ti-check" style="font-size:9px;"></i></div> <span>Type</span></div>
+          <div class="step-sep"></div>
+          <div class="step active" id="step2"><div class="step-dot">2</div> <span>Informations</span></div>
+          <div class="step-sep"></div>
+          <div class="step" id="step3"><div class="step-dot">3</div> <span>Document généré</span></div>
+        </div>
+
+        <div id="step-type-select">
+          <div class="section-label">Choisissez un type de document</div>
+          <div class="doc-grid">
+            <div class="doc-card" onclick="selectDoc('contrat_travail')">
+              <div class="doc-icon ic-blue"><i class="ti ti-briefcase"></i></div>
+              <div class="doc-name">Contrat de travail</div>
+              <div class="doc-desc">CDI, CDD, temps partiel</div>
+            </div>
+            <div class="doc-card" onclick="selectDoc('contrat_commercial')">
+              <div class="doc-icon ic-teal"><i class="ti ti-building-store"></i></div>
+              <div class="doc-name">Contrat commercial</div>
+              <div class="doc-desc">Prestation, vente, partenariat</div>
+            </div>
+            <div class="doc-card" onclick="selectDoc('mise_en_demeure')">
+              <div class="doc-icon ic-coral"><i class="ti ti-send"></i></div>
+              <div class="doc-name">Mise en demeure</div>
+              <div class="doc-desc">Inexécution, paiement</div>
+            </div>
+            <div class="doc-card" onclick="selectDoc('statuts')">
+              <div class="doc-icon ic-amber"><i class="ti ti-building"></i></div>
+              <div class="doc-name">Statuts société</div>
+              <div class="doc-desc">SAS, SARL, SASU</div>
+            </div>
+            <div class="doc-card" onclick="selectDoc('bail')">
+              <div class="doc-icon ic-pink"><i class="ti ti-home"></i></div>
+              <div class="doc-name">Bail</div>
+              <div class="doc-desc">Commercial, habitation</div>
+            </div>
+            <div class="doc-card" onclick="selectDoc('conclusions')">
+              <div class="doc-icon ic-blue"><i class="ti ti-gavel"></i></div>
+              <div class="doc-name">Conclusions</div>
+              <div class="doc-desc">Procédure contentieuse</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="step-form" style="display:none;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+            <button class="btn" onclick="backToSelect()" style="padding:4px 10px;font-size:12px;"><i class="ti ti-arrow-left"></i> Retour</button>
+            <span id="form-doc-title" style="font-size:14px;font-weight:500;color:var(--text-primary);"></span>
+          </div>
+          <div class="form-card">
+            <!-- Client selector -->
+            <div class="client-selector">
+              <div class="client-selector-label"><i class="ti ti-user" style="font-size:11px;vertical-align:-1px;margin-right:3px;"></i> Client</div>
+              <div class="autocomplete-wrap">
+                <input type="text" id="client-search" placeholder="Rechercher un client existant…" oninput="searchClients(this.value)" autocomplete="off" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--radius-md);border:0.5px solid var(--border-md);background:var(--bg-primary);color:var(--text-primary);">
+                <div class="autocomplete-list" id="autocomplete-list" style="display:none;"></div>
+              </div>
+              <div id="client-selected-display" style="display:none;">
+                <div class="client-selected" style="margin-top:8px;">
+                  <div class="client-avatar" id="sel-avatar">AB</div>
+                  <div>
+                    <div class="client-selected-name" id="sel-name"></div>
+                    <div class="client-selected-sub" id="sel-sub"></div>
+                  </div>
+                  <button class="btn" onclick="clearClient()" style="margin-left:auto;padding:3px 8px;font-size:11px;">Changer</button>
+                </div>
+              </div>
+            </div>
+            <div id="form-container"></div>
+          </div>
+          <div class="generate-bar">
+            <span class="generate-hint"><i class="ti ti-lock" style="font-size:12px;"></i> Conforme RGPD</span>
+            <button class="btn btn-primary" onclick="generateDocument()" id="gen-btn">
+              <i class="ti ti-sparkles"></i> Générer le document
+            </button>
+          </div>
+        </div>
+
+        <div id="step-output" style="display:none;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+            <button class="btn" onclick="backToForm()" style="padding:4px 10px;font-size:12px;"><i class="ti ti-arrow-left"></i> Modifier</button>
+            <span id="output-doc-title" style="font-size:14px;font-weight:500;color:var(--text-primary);"></span>
+            <span class="badge badge-success"><i class="ti ti-check" style="font-size:11px;"></i> Généré</span>
+          </div>
+          <div class="output-card">
+            <div class="output-header">
+              <span class="output-title" id="output-filename"></span>
+              <div class="output-actions">
+                <button class="btn" onclick="copyDoc()"><i class="ti ti-copy"></i> Copier</button>
+                <button class="btn btn-primary" onclick="downloadDoc()"><i class="ti ti-download"></i> Télécharger</button>
+              </div>
+            </div>
+            <div class="output-body" id="output-body"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE CLIENTS -->
+      <div class="page" id="page-clients">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <span class="section-label" style="margin:0;">Fiches clients</span>
+          <button class="btn btn-primary" onclick="openModal('modal-client');resetClientForm();">
+            <i class="ti ti-plus"></i> Nouveau client
+          </button>
+        </div>
+        <div class="clients-grid" id="clients-grid">
+          <div class="empty-state" style="grid-column:1/-1;">
+            <i class="ti ti-users"></i>
+            <p>Aucun client pour l'instant.<br>Ajoutez votre premier client ci-dessus.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE HISTORY -->
+      <div class="page" id="page-history">
+        <div class="section-label" style="margin-bottom:14px;">Documents générés</div>
+        <div class="history-list" id="history-list">
+          <div class="empty-state"><i class="ti ti-clock"></i><p>Aucun document généré pour l'instant.</p></div>
+        </div>
+      </div>
+
+      <!-- PAGE SETTINGS -->
+      <div class="page" id="page-settings">
+        <div class="settings-card">
+          <div class="settings-title"><i class="ti ti-database" style="color:var(--accent);font-size:15px;vertical-align:-2px;margin-right:6px;"></i>Connexion Supabase</div>
+          <div class="settings-field">
+            <label>Project URL</label>
+            <input type="text" id="supa-url" placeholder="https://xxxxxxxxxxxx.supabase.co" oninput="saveSettings()">
+          </div>
+          <div class="settings-field">
+            <label>Anon public key</label>
+            <input type="password" id="supa-key" placeholder="eyJhbGci..." oninput="saveSettings()">
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+            <button class="btn btn-primary" onclick="testConnection()" id="btn-test">
+              <i class="ti ti-plug"></i> Tester la connexion
+            </button>
+            <span id="conn-status" style="font-size:12px;color:var(--text-tertiary);"></span>
+          </div>
+          <div style="margin-top:14px;padding:10px 12px;background:var(--bg-secondary);border-radius:var(--radius-md);font-size:12px;color:var(--text-secondary);line-height:1.6;">
+            <strong style="font-weight:500;">Comment obtenir ces clés :</strong><br>
+            1. Allez sur <a href="https://supabase.com" target="_blank" style="color:var(--accent);">supabase.com</a> → créez un projet<br>
+            2. Settings → API → copiez "Project URL" et "anon public"<br>
+            3. Collez-les ci-dessus et cliquez "Tester"
+          </div>
+          <div style="margin-top:10px;padding:10px 12px;background:#FFFBEB;border:0.5px solid #FDE68A;border-radius:var(--radius-md);font-size:12px;color:#92400E;line-height:1.6;">
+            <strong style="font-weight:500;">Créer la table clients dans Supabase :</strong><br>
+            Allez dans SQL Editor et exécutez :<br>
+            <code style="font-size:11px;display:block;margin-top:6px;white-space:pre-wrap;background:#FEF9EC;padding:8px;border-radius:4px;">CREATE TABLE clients (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  type text DEFAULT 'societe',
+  raison_sociale text,
+  prenom text,
+  nom text,
+  siret text,
+  forme_juridique text,
+  adresse text,
+  code_postal text,
+  ville text,
+  email text,
+  telephone text,
+  representant text,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow all" ON clients FOR ALL USING (true);</code>
+          </div>
+        </div>
+        <div class="settings-card">
+          <div class="settings-title"><i class="ti ti-key" style="color:var(--accent);font-size:15px;vertical-align:-2px;margin-right:6px;"></i>Clé API Anthropic</div>
+          <div class="settings-field">
+            <input type="password" id="api-key-input" placeholder="sk-ant-api03-...">
+          </div>
+          <button class="btn btn-primary" onclick="saveApiKey()" style="margin-top:4px;">
+            <i class="ti ti-check"></i> Enregistrer
+          </button>
+          <p style="font-size:11px;color:var(--text-tertiary);margin-top:8px;">Stockée localement dans votre navigateur uniquement.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+let sbClient = null;
+let apiKey = localStorage.getItem('lexai_api_key') || '';
+let clients = [];
+let selectedClient = null;
+let currentDoc = null;
+let generatedText = '';
+let docHistory = JSON.parse(localStorage.getItem('lexai_history') || '[]');
+
+// Expose globally so inline onclick still works as fallback
+window.showPage = showPage;
+window.resetGenerate = resetGenerate;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.saveClient = saveClient;
+window.deleteClient = deleteClient;
+window.toggleClientType = toggleClientType;
+window.resetClientForm = resetClientForm;
+window.clearClient = clearClient;
+window.searchClients = searchClients;
+window.selectClient = selectClient;
+window.generateDocument = generateDocument;
+window.backToSelect = backToSelect;
+window.backToForm = backToForm;
+window.copyDoc = copyDoc;
+window.downloadDoc = downloadDoc;
+window.redownload = redownload;
+window.testConnection = testConnection;
+window.saveSettings = saveSettings;
+window.saveApiKey = saveApiKey;
+
+// Init
+window.onload = async function() {
+  // Nav event listeners
+  document.querySelectorAll('[data-page]').forEach(btn => {
+    btn.addEventListener('click', function() { showPage(this.getAttribute('data-page')); });
+  });
+  document.querySelectorAll('[data-action="new"]').forEach(btn => {
+    btn.addEventListener('click', function() { showPage('generate'); resetGenerate(); });
+  });
+
+  document.getElementById('api-key-input').value = apiKey;
+  const url = localStorage.getItem('supa_url') || '';
+  const key = localStorage.getItem('supa_key') || '';
+  document.getElementById('supa-url').value = url;
+  document.getElementById('supa-key').value = key;
+  if (url && key) await initSupabase(url, key);
+  else document.getElementById('config-warn').style.display = 'flex';
+  renderHistory();
+};
+
+async function initSupabase(url, key) {
+  try {
+    sbClient = window.supabase.createClient(url, key);
+    await loadClients();
+    document.getElementById('db-status-label').textContent = 'Base connectée';
+    document.getElementById('config-warn').style.display = 'none';
+    return true;
+  } catch(e) {
+    document.getElementById('db-status-label').textContent = 'Non connecté';
+    return false;
+  }
+}
+
+function saveSettings() {
+  const url = document.getElementById('supa-url').value.trim();
+  const key = document.getElementById('supa-key').value.trim();
+  localStorage.setItem('supa_url', url);
+  localStorage.setItem('supa_key', key);
+}
+
+async function testConnection() {
+  const url = document.getElementById('supa-url').value.trim();
+  const key = document.getElementById('supa-key').value.trim();
+  const btn = document.getElementById('btn-test');
+  const status = document.getElementById('conn-status');
+  btn.innerHTML = '<span class="spinner" style="border-top-color:var(--accent);border-color:rgba(79,70,229,0.2);"></span> Test…';
+  btn.disabled = true;
+  status.textContent = '';
+  saveSettings();
+  const ok = await initSupabase(url, key);
+  btn.innerHTML = '<i class="ti ti-plug"></i> Tester la connexion';
+  btn.disabled = false;
+  if (ok) {
+    status.innerHTML = '<span class="status-dot status-ok"></span>Connexion réussie !';
+    status.style.color = '#15803d';
+    document.getElementById('config-warn').style.display = 'none';
+  } else {
+    status.innerHTML = '<span class="status-dot status-err"></span>Échec — vérifiez les clés';
+    status.style.color = '#991B1B';
+  }
+}
+
+function saveApiKey() {
+  apiKey = document.getElementById('api-key-input').value.trim();
+  localStorage.setItem('lexai_api_key', apiKey);
+  alert('Clé API enregistrée.');
+}
+
+// Clients
+async function loadClients() {
+  if (!sbClient) return;
+  const { data, error } = await sbClient.from('clients').select('*').order('created_at', { ascending: false });
+  if (!error && data) { clients = data; renderClientsGrid(); }
+}
+
+function renderClientsGrid() {
+  const grid = document.getElementById('clients-grid');
+  if (!clients.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><i class="ti ti-users"></i><p>Aucun client pour l\'instant.<br>Ajoutez votre premier client ci-dessus.</p></div>';
+    return;
+  }
+  grid.innerHTML = clients.map(c => {
+    const name = c.type === 'societe' ? c.raison_sociale : `${c.prenom || ''} ${c.nom || ''}`.trim();
+    const initials = name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+    const sub = c.type === 'societe' ? (c.forme_juridique || '') + (c.siret ? ' · ' + c.siret : '') : (c.email || '');
+    return `<div class="client-card">
+      <div class="client-card-header">
+        <div class="client-card-avatar">${initials}</div>
+        <div>
+          <div class="client-card-name">${name}</div>
+          <div class="client-card-type">${c.type === 'societe' ? 'Société' : 'Particulier'}${c.ville ? ' · ' + c.ville : ''}</div>
+        </div>
+      </div>
+      <div class="client-card-body">
+        ${c.email ? '<i class="ti ti-mail" style="font-size:12px;vertical-align:-1px;margin-right:4px;"></i>' + c.email + '<br>' : ''}
+        ${c.telephone ? '<i class="ti ti-phone" style="font-size:12px;vertical-align:-1px;margin-right:4px;"></i>' + c.telephone + '<br>' : ''}
+        ${c.adresse ? '<i class="ti ti-map-pin" style="font-size:12px;vertical-align:-1px;margin-right:4px;"></i>' + c.adresse + (c.ville ? ', ' + c.ville : '') : ''}
+      </div>
+      <div class="client-card-actions">
+        <button class="btn" style="font-size:11px;padding:4px 8px;" onclick="selectClientFromCard(${JSON.stringify(c).replace(/"/g,'&quot;')})"><i class="ti ti-file-plus"></i> Nouveau doc</button>
+        <button class="btn btn-danger" style="font-size:11px;padding:4px 8px;" onclick="deleteClient('${c.id}')"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectClientFromCard(client) {
+  showPage('generate');
+  resetGenerate();
+}
+
+async function searchClients(query) {
+  const list = document.getElementById('autocomplete-list');
+  if (!query || query.length < 1) { list.style.display = 'none'; return; }
+  let filtered = clients.filter(c => {
+    const name = c.type === 'societe' ? c.raison_sociale : `${c.prenom||''} ${c.nom||''}`;
+    return name && name.toLowerCase().includes(query.toLowerCase());
+  });
+  list.style.display = 'block';
+  list.innerHTML = filtered.slice(0,6).map(c => {
+    const name = c.type === 'societe' ? c.raison_sociale : `${c.prenom||''} ${c.nom||''}`.trim();
+    const sub = c.ville || c.email || '';
+    const initials = name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+    return `<div class="autocomplete-item" onclick="selectClient(${JSON.stringify(c).replace(/"/g,'&quot;')})">
+      <div style="width:24px;height:24px;border-radius:50%;background:var(--accent-light);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0;">${initials}</div>
+      <div><div class="ac-name">${name}</div><div class="ac-sub">${sub}</div></div>
+    </div>`;
+  }).join('');
+  list.innerHTML += `<div class="autocomplete-new" onclick="openModal('modal-client');resetClientForm();document.getElementById('autocomplete-list').style.display='none';">
+    <i class="ti ti-plus"></i> Créer "${query}" comme nouveau client
+  </div>`;
+}
+
+function selectClient(client) {
+  selectedClient = client;
+  document.getElementById('autocomplete-list').style.display = 'none';
+  const name = client.type === 'societe' ? client.raison_sociale : `${client.prenom||''} ${client.nom||''}`.trim();
+  const initials = name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  document.getElementById('sel-avatar').textContent = initials;
+  document.getElementById('sel-name').textContent = name;
+  document.getElementById('sel-sub').textContent = (client.adresse || '') + (client.ville ? ', ' + client.ville : '');
+  document.getElementById('client-search').style.display = 'none';
+  document.getElementById('client-selected-display').style.display = 'block';
+  prefillForm(client);
+}
+
+function prefillForm(client) {
+  const name = client.type === 'societe' ? client.raison_sociale : `${client.prenom||''} ${client.nom||''}`.trim();
+  const adresse = [client.adresse, client.code_postal, client.ville].filter(Boolean).join(', ');
+  const mappings = {
+    employeur: name, prestataire: name, expediteur: name, bailleur: name,
+    siret: client.siret, adresse: adresse, adresse_bien: adresse,
+    denomination: client.raison_sociale, forme: client.forme_juridique,
+    siege: adresse, gerant: client.representant,
+  };
+  Object.entries(mappings).forEach(([id, val]) => {
+    const el = document.getElementById('field_' + id);
+    if (el && val) {
+      el.value = val;
+      el.closest('.field')?.classList.add('field-prefilled');
+    }
+  });
+}
+
+function clearClient() {
+  selectedClient = null;
+  document.getElementById('client-search').style.display = 'block';
+  document.getElementById('client-search').value = '';
+  document.getElementById('client-selected-display').style.display = 'none';
+  document.querySelectorAll('.field-prefilled input, .field-prefilled select').forEach(el => {
+    el.value = '';
+    el.closest('.field')?.classList.remove('field-prefilled');
+  });
+}
+
+function toggleClientType() {
+  const type = document.getElementById('nc-type').value;
+  const isSoc = type === 'societe';
+  document.getElementById('nc-raison-wrap').style.display = isSoc ? 'flex' : 'none';
+  document.getElementById('nc-siret-wrap').style.display = isSoc ? 'flex' : 'none';
+  document.getElementById('nc-forme-wrap').style.display = isSoc ? 'flex' : 'none';
+}
+
+function resetClientForm() {
+  ['nc-raison','nc-prenom','nc-nom','nc-siret','nc-adresse','nc-cp','nc-ville','nc-email','nc-tel','nc-representant'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('nc-type').value = 'societe';
+  toggleClientType();
+}
+
+async function saveClient() {
+  const type = document.getElementById('nc-type').value;
+  const data = {
+    type,
+    raison_sociale: document.getElementById('nc-raison').value.trim() || null,
+    prenom: document.getElementById('nc-prenom').value.trim() || null,
+    nom: document.getElementById('nc-nom').value.trim() || null,
+    siret: document.getElementById('nc-siret').value.trim() || null,
+    forme_juridique: document.getElementById('nc-forme').value || null,
+    adresse: document.getElementById('nc-adresse').value.trim() || null,
+    code_postal: document.getElementById('nc-cp').value.trim() || null,
+    ville: document.getElementById('nc-ville').value.trim() || null,
+    email: document.getElementById('nc-email').value.trim() || null,
+    telephone: document.getElementById('nc-tel').value.trim() || null,
+    representant: document.getElementById('nc-representant').value.trim() || null,
+  };
+  const name = type === 'societe' ? data.raison_sociale : `${data.prenom||''} ${data.nom||''}`.trim();
+  if (!name) { alert('Veuillez renseigner un nom ou une raison sociale.'); return; }
+  const btn = document.getElementById('btn-save-client');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Enregistrement…';
+  if (sbClient) {
+    const { error } = await sbClient.from('clients').insert([data]);
+    if (error) { alert('Erreur : ' + error.message); btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i> Enregistrer'; return; }
+    await loadClients();
+  } else {
+    clients.unshift({ ...data, id: Date.now().toString() });
+    renderClientsGrid();
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-check"></i> Enregistrer';
+  closeModal('modal-client');
+}
+
+async function deleteClient(id) {
+  if (!confirm('Supprimer ce client ?')) return;
+  if (sbClient) {
+    await sbClient.from('clients').delete().eq('id', id);
+    await loadClients();
+  } else {
+    clients = clients.filter(c => c.id !== id);
+    renderClientsGrid();
+  }
+}
+
+// Modal helpers
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
+  if (!e.target.closest('.autocomplete-wrap')) document.getElementById('autocomplete-list').style.display = 'none';
+});
+
+// Forms config
+const forms = {
+  contrat_travail: {
+    label:'Contrat de travail', icon:'ti-briefcase', filename:'contrat_travail',
+    fields:[
+      {id:'employeur', label:"Employeur"},
+      {id:'siret', label:'SIRET'},
+      {id:'salarie', label:'Nom du salarié', placeholder:'Jean Dupont'},
+      {id:'poste', label:'Poste occupé', placeholder:'Développeur logiciel'},
+      {id:'type_contrat', label:'Type de contrat', type:'select', options:['CDI','CDD','Temps partiel']},
+      {id:'salaire', label:'Salaire brut mensuel (€)', placeholder:'2 800'},
+      {id:'date_debut', label:'Date de début', type:'date'},
+      {id:'periode_essai', label:"Période d'essai", type:'select', options:['Aucune','1 mois','2 mois','3 mois']},
+      {id:'clauses', label:'Clauses particulières', type:'textarea', placeholder:'Télétravail, véhicule…', full:true},
+    ]
+  },
+  contrat_commercial: {
+    label:'Contrat commercial', icon:'ti-building-store', filename:'contrat_prestation',
+    fields:[
+      {id:'prestataire', label:'Prestataire'},
+      {id:'client', label:'Client', placeholder:'Société XYZ'},
+      {id:'objet', label:'Objet de la prestation', placeholder:'Développement site web'},
+      {id:'montant', label:'Montant HT (€)', placeholder:'8 000'},
+      {id:'duree', label:'Durée', placeholder:'3 mois'},
+      {id:'paiement', label:'Paiement', type:'select', options:['30 jours fin de mois','Acompte 30% + solde','Mensuel']},
+      {id:'obligations', label:'Obligations spécifiques', type:'textarea', full:true},
+    ]
+  },
+  mise_en_demeure: {
+    label:'Mise en demeure', icon:'ti-send', filename:'mise_en_demeure',
+    fields:[
+      {id:'expediteur', label:"Expéditeur"},
+      {id:'destinataire', label:'Destinataire', placeholder:'Société BTP Nord SARL'},
+      {id:'adresse', label:'Adresse du destinataire'},
+      {id:'motif', label:'Motif', type:'select', options:["Inexécution d'une obligation","Impayé","Trouble de jouissance","Autre"]},
+      {id:'montant', label:'Montant réclamé (€)', placeholder:'15 000'},
+      {id:'delai', label:'Délai accordé', type:'select', options:['8 jours','15 jours','30 jours']},
+      {id:'faits', label:'Description des faits', type:'textarea', full:true},
+    ]
+  },
+  statuts: {
+    label:'Statuts de société', icon:'ti-building', filename:'statuts_societe',
+    fields:[
+      {id:'denomination', label:'Dénomination sociale'},
+      {id:'forme', label:'Forme juridique', type:'select', options:['SAS','SARL','SASU','EURL']},
+      {id:'capital', label:'Capital social (€)', placeholder:'10 000'},
+      {id:'siege', label:'Siège social'},
+      {id:'associes', label:"Nombre d'associés", placeholder:'2'},
+      {id:'gerant', label:'Président / Gérant'},
+      {id:'objet', label:'Objet social', type:'textarea', full:true},
+    ]
+  },
+  bail: {
+    label:'Bail', icon:'ti-home', filename:'bail',
+    fields:[
+      {id:'bailleur', label:'Bailleur'},
+      {id:'locataire', label:'Locataire', placeholder:'Jean Moreau'},
+      {id:'adresse_bien', label:'Adresse du bien'},
+      {id:'type_bail', label:'Type de bail', type:'select', options:["Bail d'habitation (3 ans)","Bail commercial (9 ans)","Bail précaire"]},
+      {id:'loyer', label:'Loyer mensuel HC (€)', placeholder:'1 200'},
+      {id:'charges', label:'Charges (€)', placeholder:'80'},
+      {id:'depot', label:'Dépôt de garantie (€)', placeholder:'1 200'},
+      {id:'date_entree', label:"Date d'entrée", type:'date'},
+    ]
+  },
+  conclusions: {
+    label:'Conclusions', icon:'ti-gavel', filename:'conclusions',
+    fields:[
+      {id:'avocat', label:'Avocat plaidant', placeholder:'Me. Sophie Bernard'},
+      {id:'juridiction', label:'Juridiction', type:'select', options:['Tribunal judiciaire',"Cour d'appel","Conseil de prud'hommes","Tribunal de commerce"]},
+      {id:'partie', label:'Partie représentée'},
+      {id:'adverse', label:'Partie adverse', placeholder:'Société Immo Sud'},
+      {id:'demandes', label:'Demandes principales', type:'textarea', full:true},
+      {id:'moyens', label:'Moyens de droit', type:'textarea', full:true},
+    ]
+  }
+};
+
+function showPage(name) {
+  try {
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+    var pageEl = document.getElementById("page-" + name);
+    if (pageEl) pageEl.classList.add("active");
+    var navEl = document.getElementById("nav-" + name);
+    if (navEl) navEl.classList.add("active");
+    var titles = {generate:"Nouveau document", clients:"Clients", history:"Historique", settings:"Paramètres"};
+    document.getElementById("topbar-title").textContent = titles[name] || "LexAI";
+  } catch(e) { console.error("showPage error:", e); }
+}
+
+function resetGenerate() {
+  currentDoc = null; selectedClient = null;
+  document.getElementById('step-type-select').style.display = 'block';
+  document.getElementById('step-form').style.display = 'none';
+  document.getElementById('step-output').style.display = 'none';
+  document.getElementById('step1').className = 'step done';
+  document.getElementById('step2').className = 'step active';
+  document.getElementById('step3').className = 'step';
+}
+
+function selectDoc(type) {
+  currentDoc = type;
+  const f = forms[type];
+  document.getElementById('form-doc-title').textContent = f.label;
+  document.getElementById('step-type-select').style.display = 'none';
+  document.getElementById('step-form').style.display = 'block';
+  document.getElementById('step-output').style.display = 'none';
+  document.getElementById('step2').className = 'step active';
+  document.getElementById('step3').className = 'step';
+  document.getElementById('client-search').style.display = 'block';
+  document.getElementById('client-search').value = '';
+  document.getElementById('client-selected-display').style.display = 'none';
+  selectedClient = null;
+
+  let html = '<div class="form-title"><i class="ti ' + f.icon + '" style="color:var(--accent);font-size:16px;"></i> ' + f.label + '</div><div class="form-grid">';
+  f.fields.forEach(field => {
+    let input = '';
+    if (field.type === 'select') {
+      input = '<select id="field_' + field.id + '"><option value="">— Sélectionner —</option>' + field.options.map(o => '<option>' + o + '</option>').join('') + '</select>';
+    } else if (field.type === 'textarea') {
+      input = '<textarea id="field_' + field.id + '" placeholder="' + (field.placeholder||'') + '"></textarea>';
+    } else if (field.type === 'date') {
+      input = '<input type="date" id="field_' + field.id + '">';
+    } else {
+      input = '<input type="text" id="field_' + field.id + '" placeholder="' + (field.placeholder||'') + '">';
+    }
+    html += '<div class="field' + (field.full ? ' form-full' : '') + '"><label>' + field.label + '</label>' + input + '</div>';
+  });
+  html += '</div>';
+  document.getElementById('form-container').innerHTML = html;
+}
+
+function backToSelect() {
+  document.getElementById('step-type-select').style.display = 'block';
+  document.getElementById('step-form').style.display = 'none';
+  document.getElementById('step1').className = 'step done';
+  document.getElementById('step2').className = 'step active';
+}
+
+function backToForm() {
+  document.getElementById('step-form').style.display = 'block';
+  document.getElementById('step-output').style.display = 'none';
+  document.getElementById('step2').className = 'step active';
+  document.getElementById('step3').className = 'step';
+}
+
+async function generateDocument() {
+  const f = forms[currentDoc];
+  let dataFields = {};
+  f.fields.forEach(field => {
+    const el = document.getElementById('field_' + field.id);
+    if (el) dataFields[field.id] = el.value;
+  });
+  const btn = document.getElementById('gen-btn');
+  btn.innerHTML = '<span class="spinner"></span> Génération…';
+  btn.disabled = true;
+  document.getElementById('step-form').style.display = 'none';
+  document.getElementById('step-output').style.display = 'block';
+  document.getElementById('step2').className = 'step done';
+  document.getElementById('step3').className = 'step active';
+  document.getElementById('output-doc-title').textContent = f.label;
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('output-filename').textContent = f.filename + '_' + today + '.txt';
+  const outputEl = document.getElementById('output-body');
+  outputEl.className = 'output-body';
+  outputEl.textContent = 'Rédaction en cours…';
+
+  const infos = f.fields.map(field => {
+    const v = dataFields[field.id];
+    return v ? field.label + ' : ' + v : null;
+  }).filter(Boolean).join('\n');
+  const prompt = `Génère un ${f.label} complet en droit français avec les informations suivantes :\n\n${infos}\n\nDocument professionnel, complet, avec toutes les clauses obligatoires selon la loi française. Format structuré avec articles numérotés.`;
+
+  if (!apiKey) {
+    await new Promise(r => setTimeout(r, 800));
+    generatedText = demoDoc(f.label, dataFields, f.fields);
+  } else {
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514', max_tokens: 1500,
+          system: "Tu es un assistant juridique expert en droit français. Génère des documents juridiques professionnels et conformes. Réponds uniquement avec le contenu du document, sans commentaire.",
+          messages: [{role:'user', content: prompt}]
+        })
+      });
+      const data = await resp.json();
+      generatedText = data.content?.[0]?.text || 'Erreur de génération.';
+    } catch(e) { generatedText = 'Erreur de connexion. Vérifiez votre clé API dans Paramètres.'; }
+  }
+
+  outputEl.textContent = generatedText;
+  saveToHistory(f.label, selectedClient);
+  btn.innerHTML = '<i class="ti ti-sparkles"></i> Générer le document';
+  btn.disabled = false;
+}
+
+function saveToHistory(docType, client) {
+  const entry = {
+    id: Date.now(),
+    type: docType,
+    client: client ? (client.type === 'societe' ? client.raison_sociale : `${client.prenom||''} ${client.nom||''}`.trim()) : null,
+    date: new Date().toLocaleDateString('fr-FR'),
+    text: generatedText
+  };
+  docHistory.unshift(entry);
+  localStorage.setItem('lexai_history', JSON.stringify(docHistory.slice(0,50)));
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if (!docHistory.length) {
+    list.innerHTML = '<div class="empty-state"><i class="ti ti-clock"></i><p>Aucun document généré pour l\'instant.</p></div>';
+    return;
+  }
+  const icons = { 'Contrat de travail':'ti-briefcase', 'Contrat commercial':'ti-building-store', 'Mise en demeure':'ti-send', 'Statuts de société':'ti-building', 'Bail':'ti-home', 'Conclusions':'ti-gavel' };
+  list.innerHTML = docHistory.map(h => `
+    <div class="history-item">
+      <div class="history-icon"><i class="ti ${icons[h.type]||'ti-file'}"></i></div>
+      <div style="flex:1;">
+        <div class="history-name">${h.type}${h.client ? ' — ' + h.client : ''}</div>
+        <div class="history-meta">${h.date}</div>
+      </div>
+      <button class="btn" style="font-size:11px;padding:4px 8px;" onclick="redownload(${h.id})"><i class="ti ti-download"></i></button>
+    </div>`).join('');
+}
+
+function redownload(id) {
+  const h = docHistory.find(x => x.id === id);
+  if (!h) return;
+  const blob = new Blob([h.text], {type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = h.type.toLowerCase().replace(/ /g,'_') + '_' + h.date.replace(/\//g,'-') + '.txt';
+  a.click();
+}
+
+function demoDoc(label, data, fields) {
+  const today = new Date().toLocaleDateString('fr-FR');
+  let lines = [label.toUpperCase(), '(Démo — configurez votre clé API dans Paramètres)', '', 'Généré le ' + today, '', '---', ''];
+  fields.forEach(f => { if (data[f.id]) lines.push(f.label + ' : ' + data[f.id]); });
+  lines.push('', '---', '', 'ARTICLE 1 — OBJET\nLe présent document est établi conformément aux dispositions du droit français en vigueur.', '', 'ARTICLE 2 — DURÉE\nLe présent accord prend effet à compter de la date de signature par l\'ensemble des parties.', '', 'ARTICLE 3 — CONDITIONS GÉNÉRALES\nLes parties s\'engagent à respecter l\'ensemble des obligations légales et réglementaires applicables.', '', '---', '', 'Signatures :\n\n_________________________          _________________________');
+  return lines.join('\n');
+}
+
+function copyDoc() {
+  if (generatedText) navigator.clipboard.writeText(generatedText).then(() => alert('Copié !'));
+}
+
+function downloadDoc() {
+  if (!generatedText) return;
+  const blob = new Blob([generatedText], {type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = document.getElementById('output-filename').textContent; a.click();
+}
+</script>
+</body>
+</html>
