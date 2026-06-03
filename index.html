@@ -685,12 +685,13 @@ function renderClientsGrid() {
     const initials = name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
     const clientDocs = docHistory.filter(h => h.client === name);
     const clientDelais = deadlines.filter(d => d.clientName === name && d.statut === 'en_cours');
-    const docsHtml = clientDocs.length ? clientDocs.slice(0,3).map(h =>
-      `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-top:0.5px solid var(--border);">
-        <i class="ti ti-file" style="font-size:12px;color:var(--accent);flex-shrink:0;"></i>
-        <span style="font-size:11px;color:var(--text-secondary);flex:1;">${h.type}</span>
-        <span style="font-size:11px;color:var(--text-tertiary);">${h.date}</span>
-      </div>`).join('') : '';
+   const docsHtml = clientDocs.length ? clientDocs.slice(0,3).map(h =>
+  `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-top:0.5px solid var(--border);">
+    <i class="ti ti-file" style="font-size:12px;color:var(--accent);flex-shrink:0;"></i>
+    <span style="font-size:11px;color:var(--text-secondary);flex:1;">${h.type}</span>
+    <span style="font-size:11px;color:var(--text-tertiary);margin-right:4px;">${h.date}</span>
+    <button onclick="redownload(${h.id})" style="border:none;background:none;cursor:pointer;padding:2px 4px;border-radius:4px;" title="Télécharger"><i class="ti ti-download" style="font-size:12px;color:var(--accent);"></i></button>
+  </div>`).join('') : '';
     const delaisHtml = clientDelais.length ? clientDelais.slice(0,3).map(d => {
       const badge = urgenceBadge(d.dateEcheance);
       const echeance = new Date(d.dateEcheance).toLocaleDateString('fr-FR');
