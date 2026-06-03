@@ -617,6 +617,7 @@ window.onload = async function() {
   if (url && key) await initSupabase(url, key);
   else document.getElementById('config-warn').style.display = 'flex';
   renderHistory();
+  renderDeadlines();
 };
 
 async function initSupabase(url, key) {
@@ -1075,6 +1076,7 @@ function saveToHistory(docType, client) {
   docHistory.unshift(entry);
   localStorage.setItem('lexai_history', JSON.stringify(docHistory.slice(0,50)));
   renderHistory();
+ renderClientsGrid(); 
 }
 
 function renderHistory() {
