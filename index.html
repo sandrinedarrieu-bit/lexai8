@@ -283,6 +283,8 @@
       <button class="nav-item" data-page="history" id="nav-history">
         <i class="ti ti-clock"></i> <span>Historique</span>
       </button>
+     <button class="nav-item" data-page="deadlines" id="nav-deadlines">
+  <i class="ti ti-clock-exclamation"></i> <span>Délais</span> </button>
       <div class="nav-section" style="margin-top:12px;">Compte</div>
       <button class="nav-item" data-page="settings" id="nav-settings">
         <i class="ti ti-settings"></i> <span>Paramètres</span>
@@ -429,7 +431,70 @@
           </div>
         </div>
       </div>
+<!-- PAGE DÉLAIS -->
+<div class="page" id="page-deadlines">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <span class="section-label" style="margin:0;">Délais procéduraux</span>
+    <button class="btn btn-primary" onclick="openModalDeadline()">
+      <i class="ti ti-plus"></i> Nouveau délai
+    </button>
+  </div>
+  <!-- Compteurs -->
+  <div id="deadlines-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;"></div>
 
+  <!-- Liste des délais -->
+  <div class="history-list" id="deadlines-list">
+    <div class="empty-state">
+      <i class="ti ti-clock"></i>
+      <p>Aucun délai pour l'instant.<br>Ajoutez votre premier délai ci-dessus.</p>
+    </div>
+  </div>
+</div>
+<!-- MODAL NOUVEAU DÉLAI -->
+<div class="modal-overlay" id="modal-deadline">
+  <div class="modal">
+    <h2><i class="ti ti-clock-plus" style="color:var(--accent);"></i> Nouveau délai</h2>
+    <div class="modal-grid">
+      <div class="modal-field modal-full">
+        <label>Client</label>
+        <select id="dl-client"></select>
+      </div>
+      <div class="modal-field modal-full">
+        <label>Type d'acte</label>
+        <select id="dl-type" onchange="previewDelai()">
+          <option value="">— Sélectionner —</option>
+          <option value="mise_en_demeure_reponse">Réponse mise en demeure (8j)</option>
+          <option value="assignation_comparution">Délai comparution (15j)</option>
+          <option value="appel_jugement">Appel jugement (1 mois)</option>
+          <option value="opposition_jugement">Opposition jugement (1 mois)</option>
+          <option value="conclusions_fond">Conclusions fond appel (3 mois)</option>
+          <option value="licenciement_contestation">Contestation licenciement (12 mois)</option>
+          <option value="cdd_requalification">Requalification CDD (24 mois)</option>
+          <option value="conge_bail_commercial">Congé bail commercial (6 mois)</option>
+          <option value="garantie_vices_caches">Vices cachés (24 mois)</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Date de l'acte</label>
+        <input type="date" id="dl-date" onchange="previewDelai()">
+      </div>
+      <div class="modal-field">
+        <label>Échéance calculée</label>
+        <input type="text" id="dl-echeance-preview" readonly placeholder="Auto" style="background:var(--bg-secondary);color:var(--accent);font-weight:500;">
+      </div>
+      <div class="modal-field modal-full">
+        <label>Notes</label>
+        <input type="text" id="dl-notes" placeholder="Référence dossier, observations…">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-deadline')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveDeadline()" id="btn-save-deadline">
+        <i class="ti ti-check"></i> Enregistrer
+      </button>
+    </div>
+  </div>
+</div>
       <!-- PAGE HISTORY -->
       <div class="page" id="page-history">
         <div class="section-label" style="margin-bottom:14px;">Documents générés</div>
@@ -862,7 +927,10 @@ function showPage(name) {
     if (pageEl) pageEl.classList.add("active");
     var navEl = document.getElementById("nav-" + name);
     if (navEl) navEl.classList.add("active");
-    var titles = {generate:"Nouveau document", clients:"Clients", history:"Historique", settings:"Paramètres"};
+   // Trouver cette ligne dans la fonction showPage :
+var titles = {generate:"Nouveau document", clients:"Clients", history:"Historique", settings:"Paramètres"};
+// Remplacer par :
+var titles = {generate:"Nouveau document", clients:"Clients", history:"Historique", deadlines:"Délais procéduraux", settings:"Paramètres"};
     document.getElementById("topbar-title").textContent = titles[name] || "LexAI";
   } catch(e) { console.error("showPage error:", e); }
 }
@@ -1123,6 +1191,115 @@ async function calculerEcheanceAvecClaude(descriptionActe, dateOrigine) {
   const data = await res.json();
   return JSON.parse(data.content[0].text.trim());
 }
+ // ─── Module délais ───────────────────────────────────────────────────────
+let deadlines = JSON.parse(localStorage.getItem('lexai_deadlines') || '[]');
+
+function openModalDeadline() {
+  const sel = document.getElementById('dl-client');
+  sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+    clients.map(c => {
+      const name = c.type === 'societe' ? c.raison_sociale : `${c.prenom||''} ${c.nom||''}`.trim();
+      return `<option value="${c.id}">${name}</option>`;
+    }).join('');
+  document.getElementById('dl-date').value = '';
+  document.getElementById('dl-echeance-preview').value = '';
+  document.getElementById('dl-notes').value = '';
+  document.getElementById('dl-type').value = '';
+  openModal('modal-deadline');
+}
+
+function previewDelai() {
+  const type = document.getElementById('dl-type').value;
+  const date = document.getElementById('dl-date').value;
+  if (!type || !date) return;
+  try {
+    const result = calculerEcheance(type, date);
+    document.getElementById('dl-echeance-preview').value =
+      new Date(result.dateEcheance).toLocaleDateString('fr-FR') +
+      ' (J-' + result.delaiJours + ')';
+  } catch(e) {}
+}
+
+async function saveDeadline() {
+  const clientId = document.getElementById('dl-client').value;
+  const type = document.getElementById('dl-type').value;
+  const date = document.getElementById('dl-date').value;
+  if (!clientId || !type || !date) { alert('Remplissez tous les champs.'); return; }
+  const result = calculerEcheance(type, date);
+  const client = clients.find(c => c.id === clientId);
+  const clientName = client ? (client.type === 'societe' ? client.raison_sociale : `${client.prenom||''} ${client.nom||''}`.trim()) : '';
+  const entry = {
+    id: Date.now().toString(), clientId, clientName,
+    typeActe: type, label: result.label, source: result.source,
+    dateOrigine: date, dateEcheance: result.dateEcheance,
+    notes: document.getElementById('dl-notes').value,
+    statut: 'en_cours'
+  };
+  if (sbClient) {
+    await sbClient.from('deadlines').insert([{
+      client_id: clientId, type_acte: type, intitule: result.label,
+      date_origine: date, delai_jours: result.delaiJours,
+      notes: entry.notes, statut: 'en_cours'
+    }]);
+  }
+  deadlines.unshift(entry);
+  localStorage.setItem('lexai_deadlines', JSON.stringify(deadlines));
+  closeModal('modal-deadline');
+  renderDeadlines();
+}
+
+function urgenceBadge(dateEcheance) {
+  const jours = Math.ceil((new Date(dateEcheance) - new Date()) / (1000*60*60*24));
+  if (jours < 0)  return { label:'Expiré',   bg:'#FEF2F2', color:'#991B1B' };
+  if (jours <= 1)  return { label:'Demain',   bg:'#FEF2F2', color:'#991B1B' };
+  if (jours <= 7)  return { label:`J-${jours}`, bg:'#FFFBEB', color:'#92400E' };
+  if (jours <= 15) return { label:`J-${jours}`, bg:'#EFF6FF', color:'#1D4ED8' };
+  return             { label:`J-${jours}`, bg:'#F0FDF4', color:'#15803D' };
+}
+
+function renderDeadlines() {
+  const list = document.getElementById('deadlines-list');
+  const stats = document.getElementById('deadlines-stats');
+  const actifs = deadlines.filter(d => d.statut === 'en_cours');
+  const urgents = actifs.filter(d => Math.ceil((new Date(d.dateEcheance)-new Date())/(86400000)) <= 7);
+  const expires = deadlines.filter(d => d.statut === 'expire' || Math.ceil((new Date(d.dateEcheance)-new Date())/(86400000)) < 0);
+  stats.innerHTML = [
+    { label:'En cours', val: actifs.length, bg:'var(--bg-info)', color:'var(--text-info)' },
+    { label:'Urgents (<7j)', val: urgents.length, bg:'#FFFBEB', color:'#92400E' },
+    { label:'Expirés', val: expires.length, bg:'#FEF2F2', color:'#991B1B' },
+  ].map(s => `<div style="background:${s.bg};border-radius:var(--radius-md);padding:12px;text-align:center;">
+    <div style="font-size:22px;font-weight:500;color:${s.color};">${s.val}</div>
+    <div style="font-size:11px;color:${s.color};margin-top:2px;">${s.label}</div>
+  </div>`).join('');
+  if (!deadlines.length) {
+    list.innerHTML = '<div class="empty-state"><i class="ti ti-clock"></i><p>Aucun délai pour l\'instant.</p></div>';
+    return;
+  }
+  const sorted = [...deadlines].sort((a,b) => new Date(a.dateEcheance) - new Date(b.dateEcheance));
+  list.innerHTML = sorted.map(d => {
+    const badge = urgenceBadge(d.dateEcheance);
+    const echeance = new Date(d.dateEcheance).toLocaleDateString('fr-FR');
+    return `<div class="history-item">
+      <div class="history-icon"><i class="ti ti-clock"></i></div>
+      <div style="flex:1;">
+        <div class="history-name">${d.label} — ${d.clientName}</div>
+        <div class="history-meta">${d.source} · Échéance : ${echeance}</div>
+        ${d.notes ? '<div class="history-meta">'+d.notes+'</div>' : ''}
+      </div>
+      <span style="background:${badge.bg};color:${badge.color};font-size:11px;padding:3px 8px;border-radius:4px;font-weight:500;white-space:nowrap;">${badge.label}</span>
+      <button class="btn" style="font-size:11px;padding:4px 8px;" onclick="markDone('${d.id}')"><i class="ti ti-check"></i></button>
+    </div>`;
+  }).join('');
+}
+function markDone(id) {
+  deadlines = deadlines.filter(d => d.id !== id);
+  localStorage.setItem('lexai_deadlines', JSON.stringify(deadlines));
+  renderDeadlines();
+}
+window.openModalDeadline = openModalDeadline;
+window.previewDelai = previewDelai;
+window.saveDeadline = saveDeadline;
+window.markDone = markDone;
 </script>
 </body>
 </html>
