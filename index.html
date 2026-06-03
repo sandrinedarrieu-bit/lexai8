@@ -431,7 +431,14 @@
           </div>
         </div>
       </div>
-<!-- PAGE DÉLAIS -->
+      <!-- PAGE HISTORY -->
+      <div class="page" id="page-history">
+        <div class="section-label" style="margin-bottom:14px;">Documents générés</div>
+        <div class="history-list" id="history-list">
+          <div class="empty-state"><i class="ti ti-clock"></i><p>Aucun document généré pour l'instant.</p></div>
+        </div>
+      </div>
+     <!-- PAGE DÉLAIS -->
 <div class="page" id="page-deadlines">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
     <span class="section-label" style="margin:0;">Délais procéduraux</span>
@@ -495,13 +502,6 @@
     </div>
   </div>
 </div>
-      <!-- PAGE HISTORY -->
-      <div class="page" id="page-history">
-        <div class="section-label" style="margin-bottom:14px;">Documents générés</div>
-        <div class="history-list" id="history-list">
-          <div class="empty-state"><i class="ti ti-clock"></i><p>Aucun document généré pour l'instant.</p></div>
-        </div>
-      </div>
 
       <!-- PAGE SETTINGS -->
       <div class="page" id="page-settings">
@@ -927,10 +927,7 @@ function showPage(name) {
     if (pageEl) pageEl.classList.add("active");
     var navEl = document.getElementById("nav-" + name);
     if (navEl) navEl.classList.add("active");
-   // Trouver cette ligne dans la fonction showPage :
-var titles = {generate:"Nouveau document", clients:"Clients", history:"Historique", settings:"Paramètres"};
-// Remplacer par :
-var titles = {generate:"Nouveau document", clients:"Clients", history:"Historique", deadlines:"Délais procéduraux", settings:"Paramètres"};
+  var titles = {generate:"Nouveau document", clients:"Clients", history:"Historique", deadlines:"Délais procéduraux", settings:"Paramètres"};
     document.getElementById("topbar-title").textContent = titles[name] || "LexAI";
   } catch(e) { console.error("showPage error:", e); }
 }
