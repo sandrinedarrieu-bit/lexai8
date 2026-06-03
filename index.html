@@ -725,11 +725,12 @@ async function loadClients() {
     </div>`;
   }).join('');
 }
-
+}
 function selectClientFromCard(client) {
   showPage('generate');
   resetGenerate();
 }
+
 
 async function searchClients(query) {
   const list = document.getElementById('autocomplete-list');
