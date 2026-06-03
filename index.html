@@ -673,13 +673,6 @@ async function loadClients() {
   const { data, error } = await sbClient.from('clients').select('*').order('created_at', { ascending: false });
   if (!error && data) { clients = data; renderClientsGrid(); }
 }
-
-function renderClientsGrid() {
-  const grid = document.getElementById('clients-grid');
-  if (!clients.length) {
-    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><i class="ti ti-users"></i><p>Aucun client pour l\'instant.<br>Ajoutez votre premier client ci-dessus.</p></div>';
-    return;
-  }
  function renderClientsGrid() {
   const grid = document.getElementById('clients-grid');
   if (!clients.length) {
