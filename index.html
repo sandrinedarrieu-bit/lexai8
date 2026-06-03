@@ -680,10 +680,33 @@ function renderClientsGrid() {
     grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><i class="ti ti-users"></i><p>Aucun client pour l\'instant.<br>Ajoutez votre premier client ci-dessus.</p></div>';
     return;
   }
+ function renderClientsGrid() {
+  const grid = document.getElementById('clients-grid');
+  if (!clients.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><i class="ti ti-users"></i><p>Aucun client pour l\'instant.<br>Ajoutez votre premier client ci-dessus.</p></div>';
+    return;
+  }
   grid.innerHTML = clients.map(c => {
     const name = c.type === 'societe' ? c.raison_sociale : `${c.prenom || ''} ${c.nom || ''}`.trim();
     const initials = name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
-    const sub = c.type === 'societe' ? (c.forme_juridique || '') + (c.siret ? ' · ' + c.siret : '') : (c.email || '');
+    const clientDocs = docHistory.filter(h => h.client === name);
+    const clientDelais = deadlines.filter(d => d.clientName === name && d.statut === 'en_cours');
+    const docsHtml = clientDocs.length ? clientDocs.slice(0,3).map(h =>
+      `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-top:0.5px solid var(--border);">
+        <i class="ti ti-file" style="font-size:12px;color:var(--accent);flex-shrink:0;"></i>
+        <span style="font-size:11px;color:var(--text-secondary);flex:1;">${h.type}</span>
+        <span style="font-size:11px;color:var(--text-tertiary);">${h.date}</span>
+      </div>`).join('') : '';
+    const delaisHtml = clientDelais.length ? clientDelais.slice(0,3).map(d => {
+      const badge = urgenceBadge(d.dateEcheance);
+      const echeance = new Date(d.dateEcheance).toLocaleDateString('fr-FR');
+      return `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-top:0.5px solid var(--border);">
+        <i class="ti ti-clock" style="font-size:12px;color:var(--accent);flex-shrink:0;"></i>
+        <span style="font-size:11px;color:var(--text-secondary);flex:1;">${d.label}</span>
+        <span style="background:${badge.bg};color:${badge.color};font-size:10px;padding:2px 6px;border-radius:4px;font-weight:500;">${echeance}</span>
+      </div>`;
+    }).join('') : '';
+    const hasSections = clientDocs.length || clientDelais.length;
     return `<div class="client-card">
       <div class="client-card-header">
         <div class="client-card-avatar">${initials}</div>
@@ -697,12 +720,18 @@ function renderClientsGrid() {
         ${c.telephone ? '<i class="ti ti-phone" style="font-size:12px;vertical-align:-1px;margin-right:4px;"></i>' + c.telephone + '<br>' : ''}
         ${c.adresse ? '<i class="ti ti-map-pin" style="font-size:12px;vertical-align:-1px;margin-right:4px;"></i>' + c.adresse + (c.ville ? ', ' + c.ville : '') : ''}
       </div>
+      ${hasSections ? `
+      <div style="margin-top:10px;">
+        ${clientDocs.length ? `<div style="font-size:10px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">Documents (${clientDocs.length})</div>${docsHtml}` : ''}
+        ${clientDelais.length ? `<div style="font-size:10px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-top:8px;margin-bottom:2px;">Délais (${clientDelais.length})</div>${delaisHtml}` : ''}
+      </div>` : ''}
       <div class="client-card-actions">
         <button class="btn" style="font-size:11px;padding:4px 8px;" onclick="selectClientFromCard(${JSON.stringify(c).replace(/"/g,'&quot;')})"><i class="ti ti-file-plus"></i> Nouveau doc</button>
         <button class="btn btn-danger" style="font-size:11px;padding:4px 8px;" onclick="deleteClient('${c.id}')"><i class="ti ti-trash"></i></button>
       </div>
     </div>`;
   }).join('');
+}
 }
 
 function selectClientFromCard(client) {
