@@ -151,7 +151,8 @@ function calculerEcheance(typeActe, dateOrigine) {
 
 // ─── Exemple d'utilisation ────────────────────────────────────────────────
 // const result = calculerEcheance('mise_en_demeure_reponse', '2026-06-03');
-// → { dateEcheance: '2026-06-13', delaiJours: 8, label: 'Réponse mise en demeure', ... }async function calculerEcheanceAvecClaude(descriptionActe, dateOrigine) {
+// → { dateEcheance: '2026-06-13', delaiJours: 8, label: 'Réponse mise en demeure', ... }
+async function calculerEcheanceAvecClaude(descriptionActe, dateOrigine) {
   const apiKey = localStorage.getItem('anthropic_api_key');
   if (!apiKey) throw new Error('Clé API Anthropic manquante');
 
