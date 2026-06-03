@@ -671,7 +671,7 @@ function saveApiKey() {
 async function loadClients() {
   if (!sbClient) return;
   const { data, error } = await sbClient.from('clients').select('*').order('created_at', { ascending: false });
-  if (!error && data) { clients = data; renderClientsGrid(); }
+  if (!error && data) { clients = data; renderClientsGrid(); 
 }
  function renderClientsGrid() {
   const grid = document.getElementById('clients-grid');
