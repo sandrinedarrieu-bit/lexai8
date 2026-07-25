@@ -294,11 +294,14 @@
 </nav>
     <div class="sidebar-footer">
       <div class="user-row">
-        <div class="avatar">MD</div>
+        <div class="avatar" id="user-avatar">--</div>
         <div class="user-info">
-          <div class="user-name">Me. Dupont</div>
+          <div class="user-name" id="user-email">—</div>
           <div class="user-plan" id="db-status-label">Non connecté</div>
         </div>
+        <button class="btn" id="btn-logout" title="Se déconnecter" style="padding:5px 8px;margin-left:auto;">
+          <i class="ti ti-logout"></i>
+        </button>
       </div>
     </div>
   </div>
@@ -508,59 +511,13 @@
       <!-- PAGE SETTINGS -->
       <div class="page" id="page-settings">
         <div class="settings-card">
-          <div class="settings-title"><i class="ti ti-database" style="color:var(--accent);font-size:15px;vertical-align:-2px;margin-right:6px;"></i>Connexion Supabase</div>
-          <div class="settings-field">
-            <label>Project URL</label>
-            <input type="text" id="supa-url" placeholder="https://xxxxxxxxxxxx.supabase.co" oninput="saveSettings()">
-          </div>
-          <div class="settings-field">
-            <label>Anon public key</label>
-            <input type="password" id="supa-key" placeholder="eyJhbGci..." oninput="saveSettings()">
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
-            <button class="btn btn-primary" onclick="testConnection()" id="btn-test">
-              <i class="ti ti-plug"></i> Tester la connexion
-            </button>
-            <span id="conn-status" style="font-size:12px;color:var(--text-tertiary);"></span>
-          </div>
-          <div style="margin-top:14px;padding:10px 12px;background:var(--bg-secondary);border-radius:var(--radius-md);font-size:12px;color:var(--text-secondary);line-height:1.6;">
-            <strong style="font-weight:500;">Comment obtenir ces clés :</strong><br>
-            1. Allez sur <a href="https://supabase.com" target="_blank" style="color:var(--accent);">supabase.com</a> → créez un projet<br>
-            2. Settings → API → copiez "Project URL" et "anon public"<br>
-            3. Collez-les ci-dessus et cliquez "Tester"
-          </div>
-          <div style="margin-top:10px;padding:10px 12px;background:#FFFBEB;border:0.5px solid #FDE68A;border-radius:var(--radius-md);font-size:12px;color:#92400E;line-height:1.6;">
-            <strong style="font-weight:500;">Créer la table clients dans Supabase :</strong><br>
-            Allez dans SQL Editor et exécutez :<br>
-            <code style="font-size:11px;display:block;margin-top:6px;white-space:pre-wrap;background:#FEF9EC;padding:8px;border-radius:4px;">CREATE TABLE clients (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  type text DEFAULT 'societe',
-  raison_sociale text,
-  prenom text,
-  nom text,
-  siret text,
-  forme_juridique text,
-  adresse text,
-  code_postal text,
-  ville text,
-  email text,
-  telephone text,
-  representant text,
-  created_at timestamptz DEFAULT now()
-);
-ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "allow all" ON clients FOR ALL USING (true);</code>
-          </div>
-        </div>
-        <div class="settings-card">
-          <div class="settings-title"><i class="ti ti-key" style="color:var(--accent);font-size:15px;vertical-align:-2px;margin-right:6px;"></i>Clé API Anthropic</div>
-          <div class="settings-field">
-            <input type="password" id="api-key-input" placeholder="sk-ant-api03-...">
-          </div>
-          <button class="btn btn-primary" onclick="saveApiKey()" style="margin-top:4px;">
-            <i class="ti ti-check"></i> Enregistrer
+          <div class="settings-title"><i class="ti ti-user-circle" style="color:var(--accent);font-size:15px;vertical-align:-2px;margin-right:6px;"></i>Mon compte</div>
+          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Connecté en tant que :</div>
+          <div style="font-size:13px;font-weight:500;color:var(--text-primary);margin-bottom:14px;" id="settings-user-email">—</div>
+          <button class="btn btn-danger" onclick="handleLogout()">
+            <i class="ti ti-logout"></i> Se déconnecter
           </button>
-          <p style="font-size:11px;color:var(--text-tertiary);margin-top:8px;">Stockée localement dans votre navigateur uniquement.</p>
+          <p style="font-size:11px;color:var(--text-tertiary);margin-top:10px;">Vos clients et délais sont liés à votre compte et ne sont visibles que par vous.</p>
         </div>
       </div>
 
@@ -569,8 +526,12 @@ CREATE POLICY "allow all" ON clients FOR ALL USING (true);</code>
 </div>
 
 <script>
+// ─── Configuration Supabase (mêmes valeurs que login.html) ────────────
+const SUPABASE_URL = 'https://xxxxxxxxxxxx.supabase.co';
+const SUPABASE_ANON_KEY = 'COLLER_LA_CLE_ANON_ICI';
+// ────────────────────────────────────────────────────────────────────
+
 let sbClient = null;
-let apiKey = localStorage.getItem('lexai_api_key') || '';
 let clients = [];
 let selectedClient = null;
 let currentDoc = null;
@@ -595,12 +556,26 @@ window.backToForm = backToForm;
 window.copyDoc = copyDoc;
 window.downloadDoc = downloadDoc;
 window.redownload = redownload;
-window.testConnection = testConnection;
-window.saveSettings = saveSettings;
-window.saveApiKey = saveApiKey;
+window.handleLogout = handleLogout;
 
 // Init
 window.onload = async function() {
+  // ── Vérification de session : redirige vers la connexion si absente ──
+  if (SUPABASE_URL.includes('xxxxxxxxxxxx') || SUPABASE_ANON_KEY.includes('COLLER_LA_CLE')) {
+    alert('Configuration Supabase manquante dans app.html.');
+    return;
+  }
+  sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  const email = session.user.email || '';
+  document.getElementById('user-email').textContent = email;
+  document.getElementById('settings-user-email').textContent = email;
+  document.getElementById('user-avatar').textContent = email.slice(0,2).toUpperCase();
+  document.getElementById('db-status-label').textContent = 'Connecté';
+  document.getElementById('btn-logout').addEventListener('click', handleLogout);
+
   // Nav event listeners
   document.querySelectorAll('[data-page]').forEach(btn => {
     btn.addEventListener('click', function() { showPage(this.getAttribute('data-page')); });
@@ -609,64 +584,18 @@ window.onload = async function() {
     btn.addEventListener('click', function() { showPage('generate'); resetGenerate(); });
   });
 
-  document.getElementById('api-key-input').value = apiKey;
-  const url = localStorage.getItem('supa_url') || '';
-  const key = localStorage.getItem('supa_key') || '';
-  document.getElementById('supa-url').value = url;
-  document.getElementById('supa-key').value = key;
-  if (url && key) await initSupabase(url, key);
-  else document.getElementById('config-warn').style.display = 'flex';
+  await loadClients();
   renderHistory();
   renderDeadlines();
 };
 
-async function initSupabase(url, key) {
-  try {
-    sbClient = window.supabase.createClient(url, key);
-    await loadClients();
-    document.getElementById('db-status-label').textContent = 'Base connectée';
-    document.getElementById('config-warn').style.display = 'none';
-    return true;
-  } catch(e) {
-    document.getElementById('db-status-label').textContent = 'Non connecté';
-    return false;
-  }
+async function handleLogout() {
+  if (!confirm('Se déconnecter ?')) return;
+  await sbClient.auth.signOut();
+  window.location.href = 'index.html';
 }
-
-function saveSettings() {
-  const url = document.getElementById('supa-url').value.trim();
-  const key = document.getElementById('supa-key').value.trim();
-  localStorage.setItem('supa_url', url);
-  localStorage.setItem('supa_key', key);
-}
-
-async function testConnection() {
-  const url = document.getElementById('supa-url').value.trim();
-  const key = document.getElementById('supa-key').value.trim();
-  const btn = document.getElementById('btn-test');
-  const status = document.getElementById('conn-status');
-  btn.innerHTML = '<span class="spinner" style="border-top-color:var(--accent);border-color:rgba(79,70,229,0.2);"></span> Test…';
-  btn.disabled = true;
-  status.textContent = '';
-  saveSettings();
-  const ok = await initSupabase(url, key);
-  btn.innerHTML = '<i class="ti ti-plug"></i> Tester la connexion';
-  btn.disabled = false;
-  if (ok) {
-    status.innerHTML = '<span class="status-dot status-ok"></span>Connexion réussie !';
-    status.style.color = '#15803d';
-    document.getElementById('config-warn').style.display = 'none';
-  } else {
-    status.innerHTML = '<span class="status-dot status-err"></span>Échec — vérifiez les clés';
-    status.style.color = '#991B1B';
-  }
-}
-
-function saveApiKey() {
-  apiKey = document.getElementById('api-key-input').value.trim();
-  localStorage.setItem('lexai_api_key', apiKey);
-  alert('Clé API enregistrée.');
-}
+// Note : redirige vers la landing page (index.html) après déconnexion.
+// Pour aller directement au formulaire de connexion, utiliser login.html.
 
 // Clients
 async function loadClients() {
@@ -1041,23 +970,24 @@ async function generateDocument() {
   }).filter(Boolean).join('\n');
   const prompt = `Génère un ${f.label} complet en droit français avec les informations suivantes :\n\n${infos}\n\nDocument professionnel, complet, avec toutes les clauses obligatoires selon la loi française. Format structuré avec articles numérotés.`;
 
-  if (!apiKey) {
-    await new Promise(r => setTimeout(r, 800));
-    generatedText = demoDoc(f.label, dataFields, f.fields);
-  } else {
-    try {
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514', max_tokens: 1500,
-          system: "Tu es un assistant juridique expert en droit français. Génère des documents juridiques professionnels et conformes. Réponds uniquement avec le contenu du document, sans commentaire.",
-          messages: [{role:'user', content: prompt}]
-        })
-      });
-      const data = await resp.json();
-      generatedText = data.content?.[0]?.text || 'Erreur de génération.';
-    } catch(e) { generatedText = 'Erreur de connexion. Vérifiez votre clé API dans Paramètres.'; }
+  try {
+    const { data: { session } } = await sbClient.auth.getSession();
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        prompt,
+        system: "Tu es un assistant juridique expert en droit français. Génère des documents juridiques professionnels et conformes. Réponds uniquement avec le contenu du document, sans commentaire.",
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Erreur de génération.');
+    generatedText = data.text || 'Erreur de génération.';
+  } catch(e) {
+    generatedText = 'Erreur : ' + e.message;
   }
 
   outputEl.textContent = generatedText;
