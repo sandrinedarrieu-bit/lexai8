@@ -3,1258 +3,234 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LexAI — Rédaction de documents juridiques</title>
+<title>LexAI — Contrats, actes et délais, assistés par IA</title>
+<meta name="description" content="LexAI génère vos contrats et documents et calcule automatiquement vos échéances.">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --bg-primary: #ffffff; --bg-secondary: #f7f7f5; --bg-tertiary: #f0efe9;
-    --bg-info: #eff6ff; --bg-success: #f0fdf4;
+    --bg-info: #eff6ff;
     --text-primary: #1a1a18; --text-secondary: #6b6b65; --text-tertiary: #9b9b94;
-    --text-info: #1d4ed8; --text-success: #15803d;
     --border: rgba(0,0,0,0.12); --border-md: rgba(0,0,0,0.2);
-    --radius-md: 8px; --radius-lg: 12px;
+    --radius-md: 8px; --radius-lg: 12px; --radius-xl: 18px;
     --accent: #4F46E5; --accent-dark: #4338CA; --accent-light: #EEF2FF;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg-primary: #1c1c1a; --bg-secondary: #252523; --bg-tertiary: #111110;
-      --bg-info: #1e2a3a; --bg-success: #1a2e1e;
+      --bg-info: #1e2a3a;
       --text-primary: #f0ede8; --text-secondary: #a0a099; --text-tertiary: #6b6b65;
-      --text-info: #93c5fd; --text-success: #86efac;
       --border: rgba(255,255,255,0.1); --border-md: rgba(255,255,255,0.18);
       --accent-light: #1e1b4b;
     }
   }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-tertiary); color: var(--text-primary); height: 100vh; overflow: hidden; }
-  .app { display: flex; height: 100vh; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-primary); color: var(--text-primary); line-height: 1.5; }
+  a { color: inherit; }
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 
-  /* Sidebar */
-  .sidebar { width: 220px; min-width: 220px; background: var(--bg-primary); border-right: 0.5px solid var(--border); display: flex; flex-direction: column; }
-  .logo { padding: 18px 16px 14px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 8px; }
-  .logo-icon { width: 28px; height: 28px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
-  .logo-icon i { color: #fff; font-size: 15px; }
-  .logo-text { font-size: 15px; font-weight: 500; color: var(--text-primary); }
-  .logo-badge { font-size: 10px; background: var(--bg-info); color: var(--text-info); padding: 2px 6px; border-radius: 4px; }
-  .nav { padding: 12px 8px; flex: 1; }
-  .nav-section { font-size: 11px; color: var(--text-tertiary); padding: 4px 8px 6px; letter-spacing: 0.05em; text-transform: uppercase; }
-  .nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: var(--radius-md); cursor: pointer; font-size: 13px; color: var(--text-secondary); margin-bottom: 1px; border: none; background: none; width: 100%; text-align: left; }
-  .nav-item:hover { background: var(--bg-secondary); color: var(--text-primary); }
-  .nav-item.active { background: var(--accent-light); color: var(--accent); }
-  .nav-item i { font-size: 16px; }
-  .sidebar-footer { padding: 12px 8px; border-top: 0.5px solid var(--border); }
-  .user-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--radius-md); }
-  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-light); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; color: var(--accent); flex-shrink: 0; }
-  .user-name { font-size: 12px; font-weight: 500; color: var(--text-primary); }
-  .user-plan { font-size: 11px; color: var(--text-tertiary); }
-
-  /* Main */
-  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
-  .topbar { background: var(--bg-primary); border-bottom: 0.5px solid var(--border); padding: 0 24px; height: 52px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-  .topbar-title { font-size: 15px; font-weight: 500; color: var(--text-primary); }
-  .topbar-actions { display: flex; gap: 8px; align-items: center; }
-  .btn { padding: 6px 14px; border-radius: var(--radius-md); font-size: 13px; cursor: pointer; border: 0.5px solid var(--border-md); background: transparent; color: var(--text-primary); display: inline-flex; align-items: center; gap: 5px; }
+  /* Nav */
+  header { border-bottom: 0.5px solid var(--border); }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .logo { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+  .logo-icon { width: 30px; height: 30px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
+  .logo-icon i { color: #fff; font-size: 16px; }
+  .logo-text { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+  .nav-links { display: flex; align-items: center; gap: 28px; }
+  .nav-links a { font-size: 14px; color: var(--text-secondary); text-decoration: none; }
+  .nav-links a:hover { color: var(--text-primary); }
+  .btn { padding: 9px 18px; border-radius: var(--radius-md); font-size: 14px; font-weight: 500; cursor: pointer; border: 0.5px solid var(--border-md); background: transparent; color: var(--text-primary); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
   .btn:hover { background: var(--bg-secondary); }
-  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
   .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .btn-primary:hover:not(:disabled) { background: var(--accent-dark); }
-  .btn-danger { background: #FEF2F2; color: #991B1B; border-color: #FECACA; }
-  .btn-danger:hover { background: #FEE2E2; }
-  .content { flex: 1; overflow-y: auto; padding: 24px; }
-  .page { display: none; }
-  .page.active { display: block; }
+  .btn-primary:hover { background: var(--accent-dark); }
+  .btn-lg { padding: 13px 26px; font-size: 15px; }
 
-  /* Config banner */
-  .config-banner { background: #FFFBEB; border: 0.5px solid #FDE68A; border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #92400E; }
-  .config-banner i { font-size: 15px; flex-shrink: 0; }
-  .config-banner a { color: #92400E; font-weight: 500; }
+  /* Hero */
+  .hero { padding: 96px 0 80px; text-align: center; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--accent); background: var(--accent-light); padding: 5px 12px; border-radius: 20px; margin-bottom: 22px; }
+  .hero h1 { font-size: 42px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; max-width: 720px; margin: 0 auto 20px; }
+  .hero h1 span { color: var(--accent); }
+  .hero p { font-size: 17px; color: var(--text-secondary); max-width: 560px; margin: 0 auto 34px; }
+  .hero-ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .hero-note { font-size: 12px; color: var(--text-tertiary); margin-top: 16px; }
 
-  /* Client autocomplete */
-  .autocomplete-wrap { position: relative; }
-  .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-primary); border: 0.5px solid var(--border-md); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 50; max-height: 200px; overflow-y: auto; margin-top: 2px; }
-  .autocomplete-item { padding: 8px 12px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-  .autocomplete-item:hover { background: var(--bg-secondary); }
-  .autocomplete-item .ac-name { font-weight: 500; color: var(--text-primary); }
-  .autocomplete-item .ac-sub { font-size: 11px; color: var(--text-tertiary); }
-  .autocomplete-item i { font-size: 14px; color: var(--accent); flex-shrink: 0; }
-  .autocomplete-new { padding: 8px 12px; font-size: 12px; color: var(--accent); cursor: pointer; border-top: 0.5px solid var(--border); display: flex; align-items: center; gap: 6px; }
-  .autocomplete-new:hover { background: var(--accent-light); }
+  /* Mock preview */
+  .preview { margin-top: 64px; border-radius: var(--radius-xl); border: 0.5px solid var(--border); background: var(--bg-secondary); padding: 10px; }
+  .preview-inner { border-radius: calc(var(--radius-xl) - 6px); background: var(--bg-primary); border: 0.5px solid var(--border); overflow: hidden; }
+  .preview-bar { display: flex; gap: 6px; padding: 12px 16px; border-bottom: 0.5px solid var(--border); }
+  .preview-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border-md); }
+  .preview-body { display: grid; grid-template-columns: 160px 1fr; min-height: 280px; }
+  .preview-side { border-right: 0.5px solid var(--border); padding: 16px 12px; background: var(--bg-secondary); }
+  .preview-item { font-size: 12px; color: var(--text-secondary); padding: 7px 10px; border-radius: 6px; margin-bottom: 2px; }
+  .preview-item.active { background: var(--accent-light); color: var(--accent); font-weight: 500; }
+  .preview-main { padding: 24px; text-align: left; }
+  .preview-card { border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 10px; }
+  .preview-card-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .preview-card-sub { font-size: 12px; color: var(--text-tertiary); }
+  .badge-urgent { display: inline-block; font-size: 11px; background: #FEF2F2; color: #991B1B; padding: 2px 8px; border-radius: 4px; font-weight: 500; margin-left: 8px; }
 
-  /* Doc grid */
-  .doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 12px; margin-bottom: 24px; }
-  .doc-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px 14px; cursor: pointer; transition: border-color 0.15s; }
-  .doc-card:hover { border-color: var(--accent); }
-  .doc-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
-  .doc-icon i { font-size: 18px; }
-  .ic-blue { background: #EEF2FF; color: #4F46E5; }
-  .ic-teal { background: #E6FAF5; color: #0F6E56; }
-  .ic-amber { background: #FEF9EC; color: #B45309; }
-  .ic-coral { background: #FEF0EC; color: #C2410C; }
-  .ic-pink { background: #FDF2F8; color: #9D174D; }
-  .doc-name { font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 3px; }
-  .doc-desc { font-size: 11px; color: var(--text-tertiary); }
-  .section-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 10px; letter-spacing: 0.02em; text-transform: uppercase; }
+  /* Features */
+  .features { padding: 88px 0; background: var(--bg-tertiary); }
+  .section-head { text-align: center; max-width: 560px; margin: 0 auto 52px; }
+  .section-head h2 { font-size: 30px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 12px; }
+  .section-head p { font-size: 15px; color: var(--text-secondary); }
+  .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .feature-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 26px 22px; }
+  .feature-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+  .feature-icon i { font-size: 20px; }
+  .feature-card h3 { font-size: 16px; font-weight: 500; margin-bottom: 8px; }
+  .feature-card p { font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; }
 
-  /* Form */
-  .form-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 80px; }
-  .form-title { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
-  .client-selector { background: var(--accent-light); border: 0.5px solid #C7D2FE; border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 16px; }
-  .client-selector-label { font-size: 11px; color: var(--accent); font-weight: 500; margin-bottom: 6px; letter-spacing: 0.03em; text-transform: uppercase; }
-  .client-selected { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
-  .client-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; flex-shrink: 0; }
-  .client-selected-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
-  .client-selected-sub { font-size: 11px; color: var(--text-secondary); }
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .form-full { grid-column: 1 / -1; }
-  .field { display: flex; flex-direction: column; gap: 4px; }
-  .field label { font-size: 12px; color: var(--text-secondary); }
-  .field input, .field select, .field textarea { font-size: 13px; padding: 7px 10px; border-radius: var(--radius-md); border: 0.5px solid var(--border-md); background: var(--bg-primary); color: var(--text-primary); width: 100%; font-family: inherit; }
-  .field textarea { resize: vertical; min-height: 70px; }
-  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,70,229,0.12); }
-  .field-prefilled input, .field-prefilled select { background: #F9FAFB; border-color: #D1FAE5; color: var(--text-secondary); }
+  /* How it works */
+  .how { padding: 88px 0; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; margin-top: 48px; }
+  .step { text-align: center; }
+  .step-num { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--accent); color: var(--accent); font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+  .step h3 { font-size: 15px; font-weight: 500; margin-bottom: 8px; }
+  .step p { font-size: 13.5px; color: var(--text-secondary); }
 
-  /* Generate bar */
-  .generate-bar { position: fixed; bottom: 0; left: 220px; right: 0; background: var(--bg-primary); border-top: 0.5px solid var(--border); padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
-  .generate-hint { font-size: 12px; color: var(--text-tertiary); display: flex; align-items: center; gap: 4px; }
+  /* CTA band */
+  .cta-band { background: var(--accent); border-radius: var(--radius-xl); margin: 0 24px 88px; padding: 56px 40px; text-align: center; max-width: 1032px; margin-left: auto; margin-right: auto; }
+  .cta-band h2 { color: #fff; font-size: 26px; font-weight: 600; margin-bottom: 10px; }
+  .cta-band p { color: rgba(255,255,255,0.8); font-size: 14px; margin-bottom: 26px; }
+  .btn-white { background: #fff; color: var(--accent); border-color: #fff; }
+  .btn-white:hover { background: #f4f4ff; }
 
-  /* Output */
-  .output-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
-  .output-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 0.5px solid var(--border); flex-wrap: wrap; gap: 8px; }
-  .output-title { font-size: 13px; font-weight: 500; color: var(--text-primary); font-family: monospace; }
-  .output-actions { display: flex; gap: 6px; }
-  .output-body { font-size: 13px; color: var(--text-primary); line-height: 1.7; white-space: pre-wrap; max-height: 420px; overflow-y: auto; }
-  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
-  .badge-success { background: var(--bg-success); color: var(--text-success); }
-  .badge-info { background: var(--bg-info); color: var(--text-info); }
+  footer { border-top: 0.5px solid var(--border); padding: 28px 0; }
+  .footer-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-tertiary); flex-wrap: wrap; gap: 10px; }
 
-  /* Clients page */
-  .clients-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
-  .client-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
-  .client-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-  .client-card-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; flex-shrink: 0; }
-  .client-card-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
-  .client-card-type { font-size: 11px; color: var(--text-tertiary); }
-  .client-card-body { font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
-  .client-card-actions { margin-top: 10px; display: flex; gap: 6px; }
-
-  /* History */
-  .history-list { display: flex; flex-direction: column; gap: 8px; }
-  .history-item { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
-  .history-icon { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: var(--accent-light); flex-shrink: 0; }
-  .history-icon i { font-size: 15px; color: var(--accent); }
-  .history-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
-  .history-meta { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
-  .history-date { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }
-
-  /* Modal */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 100; }
-  .modal-overlay.open { display: flex; }
-  .modal { background: var(--bg-primary); border-radius: var(--radius-lg); padding: 24px; width: 480px; max-width: 92vw; border: 0.5px solid var(--border-md); max-height: 90vh; overflow-y: auto; }
-  .modal h2 { font-size: 15px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-  .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-  .modal-full { grid-column: 1 / -1; }
-  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-  .modal-field { display: flex; flex-direction: column; gap: 4px; }
-  .modal-field label { font-size: 12px; color: var(--text-secondary); }
-  .modal-field input, .modal-field select { font-size: 13px; padding: 7px 10px; border-radius: var(--radius-md); border: 0.5px solid var(--border-md); background: var(--bg-primary); color: var(--text-primary); width: 100%; font-family: inherit; }
-  .modal-field input:focus, .modal-field select:focus { outline: none; border-color: var(--accent); }
-
-  /* Settings */
-  .settings-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 12px; }
-  .settings-title { font-size: 14px; font-weight: 500; margin-bottom: 12px; color: var(--text-primary); }
-  .settings-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
-  .settings-field label { font-size: 12px; color: var(--text-secondary); }
-  .settings-field input { font-size: 13px; padding: 7px 10px; border-radius: var(--radius-md); border: 0.5px solid var(--border-md); background: var(--bg-primary); color: var(--text-primary); width: 100%; font-family: monospace; }
-  .settings-field input:focus { outline: none; border-color: var(--accent); }
-  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-  .status-ok { background: #22C55E; }
-  .status-err { background: #EF4444; }
-
-  /* Steps */
-  .step-indicator { display: flex; align-items: center; gap: 6px; margin-bottom: 20px; }
-  .step { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-tertiary); }
-  .step.active { color: var(--accent); font-weight: 500; }
-  .step.done { color: var(--text-success); }
-  .step-dot { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; }
-  .step-sep { flex: 1; height: 1px; background: var(--border); }
-  .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: -2px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-tertiary); }
-  .empty-state i { font-size: 32px; margin-bottom: 10px; display: block; }
-  .empty-state p { font-size: 13px; }
-
-  @media (max-width: 600px) {
-    .sidebar { width: 52px; min-width: 52px; }
-    .logo-text, .logo-badge, .nav-section { display: none; }
-    .nav-item span { display: none; }
-    .nav-item { justify-content: center; padding: 10px; }
-    .generate-bar { left: 52px; }
-    .form-grid, .modal-grid { grid-template-columns: 1fr; }
-    .form-full, .modal-full { grid-column: 1; }
+  @media (max-width: 760px) {
+    .nav-links { display: none; }
+    .hero h1 { font-size: 30px; }
+    .feature-grid, .steps { grid-template-columns: 1fr; }
+    .preview-body { grid-template-columns: 1fr; }
+    .preview-side { display: none; }
   }
 </style>
 </head>
 <body>
 
-<!-- Modal nouveau client -->
-<div class="modal-overlay" id="modal-client">
-  <div class="modal">
-    <h2><i class="ti ti-user-plus" style="color:var(--accent);"></i> Nouveau client</h2>
-    <div class="modal-grid">
-      <div class="modal-field modal-full">
-        <label>Type</label>
-        <select id="nc-type" onchange="toggleClientType()">
-          <option value="societe">Société</option>
-          <option value="particulier">Particulier</option>
-        </select>
-      </div>
-      <div class="modal-field modal-full" id="nc-raison-wrap">
-        <label>Raison sociale</label>
-        <input type="text" id="nc-raison" placeholder="Société ABC SAS">
-      </div>
-      <div class="modal-field">
-        <label>Prénom</label>
-        <input type="text" id="nc-prenom" placeholder="Jean">
-      </div>
-      <div class="modal-field">
-        <label>Nom</label>
-        <input type="text" id="nc-nom" placeholder="Dupont">
-      </div>
-      <div class="modal-field" id="nc-siret-wrap">
-        <label>SIRET</label>
-        <input type="text" id="nc-siret" placeholder="123 456 789 00012">
-      </div>
-      <div class="modal-field" id="nc-forme-wrap">
-        <label>Forme juridique</label>
-        <select id="nc-forme">
-          <option>SAS</option><option>SARL</option><option>SASU</option><option>EURL</option><option>SA</option><option>SCI</option><option>Autre</option>
-        </select>
-      </div>
-      <div class="modal-field modal-full">
-        <label>Adresse</label>
-        <input type="text" id="nc-adresse" placeholder="12 rue de la Paix">
-      </div>
-      <div class="modal-field">
-        <label>Code postal</label>
-        <input type="text" id="nc-cp" placeholder="75001">
-      </div>
-      <div class="modal-field">
-        <label>Ville</label>
-        <input type="text" id="nc-ville" placeholder="Paris">
-      </div>
-      <div class="modal-field">
-        <label>Email</label>
-        <input type="email" id="nc-email" placeholder="contact@societe.fr">
-      </div>
-      <div class="modal-field">
-        <label>Téléphone</label>
-        <input type="text" id="nc-tel" placeholder="06 12 34 56 78">
-      </div>
-      <div class="modal-field modal-full">
-        <label>Représentant légal / Contact</label>
-        <input type="text" id="nc-representant" placeholder="Marie Martin, Directrice générale">
-      </div>
+<header>
+  <div class="container nav">
+    <a href="index.html" class="logo">
+      <div class="logo-icon"><i class="ti ti-gavel"></i></div>
+      <div class="logo-text">LexAI</div>
+    </a>
+    <div class="nav-links">
+      <a href="#fonctionnalites">Fonctionnalités</a>
+      <a href="#fonctionnement">Fonctionnement</a>
     </div>
-    <div class="modal-actions">
-      <button class="btn" onclick="closeModal('modal-client')">Annuler</button>
-      <button class="btn btn-primary" onclick="saveClient()" id="btn-save-client">
-        <i class="ti ti-check"></i> Enregistrer
-      </button>
+    <a href="login.html" class="btn btn-primary">Se connecter</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <div class="eyebrow"><i class="ti ti-sparkles"></i> Assisté par IA</div>
+    <h1>Rédigez vos contrats et actes, <span>ne manquez plus jamais un délai</span></h1>
+    <p>LexAI génère vos contrats et documents et calcule automatiquement vos échéances — pour ne plus jamais rien laisser passer.</p>
+    <div class="hero-ctas">
+      <a href="login.html" class="btn btn-primary btn-lg"><i class="ti ti-login-2"></i> Se connecter</a>
+      <a href="login.html" class="btn btn-lg">Créer un compte</a>
+    </div>
+    <div class="hero-note">Sans engagement · Vos données restent privées et liées à votre compte</div>
+
+    <div class="preview">
+      <div class="preview-inner">
+        <div class="preview-bar">
+          <div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div>
+        </div>
+        <div class="preview-body">
+          <div class="preview-side">
+            <div class="preview-item active"><i class="ti ti-file-text" style="margin-right:6px;"></i>Documents</div>
+            <div class="preview-item"><i class="ti ti-users" style="margin-right:6px;"></i>Clients</div>
+            <div class="preview-item"><i class="ti ti-clock" style="margin-right:6px;"></i>Délais</div>
+            <div class="preview-item"><i class="ti ti-history" style="margin-right:6px;"></i>Historique</div>
+          </div>
+          <div class="preview-main">
+            <div class="preview-card">
+              <div class="preview-card-title">Mise en demeure — Société Dupont</div>
+              <div class="preview-card-sub">Générée le 24/07/2026</div>
+            </div>
+            <div class="preview-card">
+              <div class="preview-card-title">Appel jugement — M. Martin<span class="badge-urgent">J-6</span></div>
+              <div class="preview-card-sub">Échéance : 31/07/2026 · Art. 538 CPC</div>
+            </div>
+            <div class="preview-card">
+              <div class="preview-card-title">Contrat de prestation — Studio Alpha</div>
+              <div class="preview-card-sub">Généré le 20/07/2026</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
+</section>
+
+<section class="features" id="fonctionnalites">
+  <div class="container">
+    <div class="section-head">
+      <h2>Tout ce qu'il vous faut, en un seul endroit</h2>
+      <p>Trois modules pensés pour la rédaction et le suivi de vos actes, quel que soit votre métier.</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon"><i class="ti ti-file-text"></i></div>
+        <h3>Rédaction de documents</h3>
+        <p>Contrats commerciaux, contrats de travail, mises en demeure, statuts… générés en quelques secondes à partir des informations de votre dossier.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="ti ti-clock"></i></div>
+        <h3>Suivi des délais</h3>
+        <p>Échéances procédurales, préavis, renouvellements de bail ou de contrat : calcul automatique et alertes avant qu'il ne soit trop tard.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="ti ti-users"></i></div>
+        <h3>Fiches clients</h3>
+        <p>Centralisez vos clients ou partenaires, leurs documents générés et leurs échéances en cours, au même endroit.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="how" id="fonctionnement">
+  <div class="container">
+    <div class="section-head">
+      <h2>Comment ça marche</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Créez votre compte</h3>
+        <p>Connexion sécurisée, données liées à votre compte uniquement.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Ajoutez un client</h3>
+        <p>Renseignez les informations une fois, réutilisez-les partout.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Générez et suivez</h3>
+        <p>Documents générés automatiquement et reçus par email ou directement dans le dossier du client. Délais suivis en continu, rien ne se perd.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="cta-band">
+  <h2>Prêt à essayer LexAI ?</h2>
+  <p>Créez votre compte en moins d'une minute.</p>
+  <a href="login.html" class="btn btn-white btn-lg">Créer mon compte <i class="ti ti-arrow-right"></i></a>
 </div>
 
-<div class="app">
-  <div class="sidebar">
-    <div class="logo">
-      <div class="logo-icon"><i class="ti ti-scale"></i></div>
-      <span class="logo-text">LexAI</span>
-      <span class="logo-badge">Beta</span>
-    </div>
-  <nav class="nav">
-  <div class="nav-section">Principal</div>
-  <button class="nav-item active" data-page="generate" id="nav-generate">
-    <i class="ti ti-file-plus"></i> <span>Nouveau document</span>
-  </button>
-  <button class="nav-item" data-page="deadlines" id="nav-deadlines">
-    <i class="ti ti-clock-exclamation"></i> <span>Gestion des délais</span>
-  </button>
-  <div class="nav-section" style="margin-top:12px;">Gestion</div>
-  <button class="nav-item" data-page="clients" id="nav-clients">
-    <i class="ti ti-users"></i> <span>Clients</span>
-  </button>
-  <button class="nav-item" data-page="history" id="nav-history">
-    <i class="ti ti-clock"></i> <span>Historique</span>
-  </button>
-  <div class="nav-section" style="margin-top:12px;">Compte</div>
-  <button class="nav-item" data-page="settings" id="nav-settings">
-    <i class="ti ti-settings"></i> <span>Paramètres</span>
-  </button>
-</nav>
-    <div class="sidebar-footer">
-      <div class="user-row">
-        <div class="avatar" id="user-avatar">--</div>
-        <div class="user-info">
-          <div class="user-name" id="user-email">—</div>
-          <div class="user-plan" id="db-status-label">Non connecté</div>
-        </div>
-        <button class="btn" id="btn-logout" title="Se déconnecter" style="padding:5px 8px;margin-left:auto;">
-          <i class="ti ti-logout"></i>
-        </button>
-      </div>
-    </div>
+<footer>
+  <div class="container footer-row">
+    <span>© 2026 LexAI</span>
+    <span>Un outil d'aide à la rédaction — ne remplace pas le conseil d'un professionnel du droit.</span>
   </div>
+</footer>
 
-  <div class="main">
-    <div class="topbar">
-      <span class="topbar-title" id="topbar-title">Nouveau document</span>
-      <div class="topbar-actions">
-        <button class="btn btn-primary" data-action="new">
-          <i class="ti ti-plus"></i> Nouveau
-        </button>
-      </div>
-    </div>
-
-    <div class="content">
-
-      <!-- PAGE GENERATE -->
-      <div class="page active" id="page-generate">
-        <div id="config-warn" class="config-banner" style="display:none;">
-          <i class="ti ti-alert-triangle"></i>
-          Base de données non configurée. <a href="#" onclick="window.showPage('settings')">Configurer Supabase →</a>
-        </div>
-        <div class="step-indicator">
-          <div class="step done" id="step1"><div class="step-dot"><i class="ti ti-check" style="font-size:9px;"></i></div> <span>Type</span></div>
-          <div class="step-sep"></div>
-          <div class="step active" id="step2"><div class="step-dot">2</div> <span>Informations</span></div>
-          <div class="step-sep"></div>
-          <div class="step" id="step3"><div class="step-dot">3</div> <span>Document généré</span></div>
-        </div>
-
-        <div id="step-type-select">
-          <div class="section-label">Choisissez un type de document</div>
-          <div class="doc-grid">
-            <div class="doc-card" onclick="selectDoc('contrat_travail')">
-              <div class="doc-icon ic-blue"><i class="ti ti-briefcase"></i></div>
-              <div class="doc-name">Contrat de travail</div>
-              <div class="doc-desc">CDI, CDD, temps partiel</div>
-            </div>
-            <div class="doc-card" onclick="selectDoc('contrat_commercial')">
-              <div class="doc-icon ic-teal"><i class="ti ti-building-store"></i></div>
-              <div class="doc-name">Contrat commercial</div>
-              <div class="doc-desc">Prestation, vente, partenariat</div>
-            </div>
-            <div class="doc-card" onclick="selectDoc('mise_en_demeure')">
-              <div class="doc-icon ic-coral"><i class="ti ti-send"></i></div>
-              <div class="doc-name">Mise en demeure</div>
-              <div class="doc-desc">Inexécution, paiement</div>
-            </div>
-            <div class="doc-card" onclick="selectDoc('statuts')">
-              <div class="doc-icon ic-amber"><i class="ti ti-building"></i></div>
-              <div class="doc-name">Statuts société</div>
-              <div class="doc-desc">SAS, SARL, SASU</div>
-            </div>
-            <div class="doc-card" onclick="selectDoc('bail')">
-              <div class="doc-icon ic-pink"><i class="ti ti-home"></i></div>
-              <div class="doc-name">Bail</div>
-              <div class="doc-desc">Commercial, habitation</div>
-            </div>
-            <div class="doc-card" onclick="selectDoc('conclusions')">
-              <div class="doc-icon ic-blue"><i class="ti ti-gavel"></i></div>
-              <div class="doc-name">Conclusions</div>
-              <div class="doc-desc">Procédure contentieuse</div>
-            </div>
-          </div>
-        </div>
-
-        <div id="step-form" style="display:none;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
-            <button class="btn" onclick="backToSelect()" style="padding:4px 10px;font-size:12px;"><i class="ti ti-arrow-left"></i> Retour</button>
-            <span id="form-doc-title" style="font-size:14px;font-weight:500;color:var(--text-primary);"></span>
-          </div>
-          <div class="form-card">
-            <!-- Client selector -->
-            <div class="client-selector">
-              <div class="client-selector-label"><i class="ti ti-user" style="font-size:11px;vertical-align:-1px;margin-right:3px;"></i> Client</div>
-              <div class="autocomplete-wrap">
-                <input type="text" id="client-search" placeholder="Rechercher un client existant…" oninput="searchClients(this.value)" autocomplete="off" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--radius-md);border:0.5px solid var(--border-md);background:var(--bg-primary);color:var(--text-primary);">
-                <div class="autocomplete-list" id="autocomplete-list" style="display:none;"></div>
-              </div>
-              <div id="client-selected-display" style="display:none;">
-                <div class="client-selected" style="margin-top:8px;">
-                  <div class="client-avatar" id="sel-avatar">AB</div>
-                  <div>
-                    <div class="client-selected-name" id="sel-name"></div>
-                    <div class="client-selected-sub" id="sel-sub"></div>
-                  </div>
-                  <button class="btn" onclick="clearClient()" style="margin-left:auto;padding:3px 8px;font-size:11px;">Changer</button>
-                </div>
-              </div>
-            </div>
-            <div id="form-container"></div>
-          </div>
-          <div class="generate-bar">
-            <span class="generate-hint"><i class="ti ti-lock" style="font-size:12px;"></i> Conforme RGPD</span>
-            <button class="btn btn-primary" onclick="generateDocument()" id="gen-btn">
-              <i class="ti ti-sparkles"></i> Générer le document
-            </button>
-          </div>
-        </div>
-
-        <div id="step-output" style="display:none;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-            <button class="btn" onclick="backToForm()" style="padding:4px 10px;font-size:12px;"><i class="ti ti-arrow-left"></i> Modifier</button>
-            <span id="output-doc-title" style="font-size:14px;font-weight:500;color:var(--text-primary);"></span>
-            <span class="badge badge-success"><i class="ti ti-check" style="font-size:11px;"></i> Généré</span>
-          </div>
-          <div class="output-card">
-            <div class="output-header">
-              <span class="output-title" id="output-filename"></span>
-              <div class="output-actions">
-                <button class="btn" onclick="copyDoc()"><i class="ti ti-copy"></i> Copier</button>
-                <button class="btn btn-primary" onclick="downloadDoc()"><i class="ti ti-download"></i> Télécharger</button>
-              </div>
-            </div>
-            <div class="output-body" id="output-body"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- PAGE CLIENTS -->
-      <div class="page" id="page-clients">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-          <span class="section-label" style="margin:0;">Fiches clients</span>
-          <button class="btn btn-primary" onclick="openModal('modal-client');resetClientForm();">
-            <i class="ti ti-plus"></i> Nouveau client
-          </button>
-        </div>
-        <div class="clients-grid" id="clients-grid">
-          <div class="empty-state" style="grid-column:1/-1;">
-            <i class="ti ti-users"></i>
-            <p>Aucun client pour l'instant.<br>Ajoutez votre premier client ci-dessus.</p>
-          </div>
-        </div>
-      </div>
-      <!-- PAGE HISTORY -->
-      <div class="page" id="page-history">
-        <div class="section-label" style="margin-bottom:14px;">Documents générés</div>
-        <div class="history-list" id="history-list">
-          <div class="empty-state"><i class="ti ti-clock"></i><p>Aucun document généré pour l'instant.</p></div>
-        </div>
-      </div>
-     <!-- PAGE DÉLAIS -->
-<div class="page" id="page-deadlines">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-    <span class="section-label" style="margin:0;">Délais procéduraux</span>
-    <button class="btn btn-primary" onclick="openModalDeadline()">
-      <i class="ti ti-plus"></i> Nouveau délai
-    </button>
-  </div>
-  <!-- Compteurs -->
-  <div id="deadlines-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;"></div>
-
-  <!-- Liste des délais -->
-  <div class="history-list" id="deadlines-list">
-    <div class="empty-state">
-      <i class="ti ti-clock"></i>
-      <p>Aucun délai pour l'instant.<br>Ajoutez votre premier délai ci-dessus.</p>
-    </div>
-  </div>
-</div>
-<!-- MODAL NOUVEAU DÉLAI -->
-<div class="modal-overlay" id="modal-deadline">
-  <div class="modal">
-    <h2><i class="ti ti-clock-plus" style="color:var(--accent);"></i> Nouveau délai</h2>
-    <div class="modal-grid">
-      <div class="modal-field modal-full">
-        <label>Client</label>
-        <select id="dl-client"></select>
-      </div>
-      <div class="modal-field modal-full">
-        <label>Type d'acte</label>
-        <select id="dl-type" onchange="previewDelai()">
-          <option value="">— Sélectionner —</option>
-          <option value="mise_en_demeure_reponse">Réponse mise en demeure (8j)</option>
-          <option value="assignation_comparution">Délai comparution (15j)</option>
-          <option value="appel_jugement">Appel jugement (1 mois)</option>
-          <option value="opposition_jugement">Opposition jugement (1 mois)</option>
-          <option value="conclusions_fond">Conclusions fond appel (3 mois)</option>
-          <option value="licenciement_contestation">Contestation licenciement (12 mois)</option>
-          <option value="cdd_requalification">Requalification CDD (24 mois)</option>
-          <option value="conge_bail_commercial">Congé bail commercial (6 mois)</option>
-          <option value="garantie_vices_caches">Vices cachés (24 mois)</option>
-        </select>
-      </div>
-      <div class="modal-field">
-        <label>Date de l'acte</label>
-        <input type="date" id="dl-date" onchange="previewDelai()">
-      </div>
-      <div class="modal-field">
-        <label>Échéance calculée</label>
-        <input type="text" id="dl-echeance-preview" readonly placeholder="Auto" style="background:var(--bg-secondary);color:var(--accent);font-weight:500;">
-      </div>
-      <div class="modal-field modal-full">
-        <label>Notes</label>
-        <input type="text" id="dl-notes" placeholder="Référence dossier, observations…">
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn" onclick="closeModal('modal-deadline')">Annuler</button>
-      <button class="btn btn-primary" onclick="saveDeadline()" id="btn-save-deadline">
-        <i class="ti ti-check"></i> Enregistrer
-      </button>
-    </div>
-  </div>
-</div>
-
-      <!-- PAGE SETTINGS -->
-      <div class="page" id="page-settings">
-        <div class="settings-card">
-          <div class="settings-title"><i class="ti ti-user-circle" style="color:var(--accent);font-size:15px;vertical-align:-2px;margin-right:6px;"></i>Mon compte</div>
-          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Connecté en tant que :</div>
-          <div style="font-size:13px;font-weight:500;color:var(--text-primary);margin-bottom:14px;" id="settings-user-email">—</div>
-          <button class="btn btn-danger" onclick="handleLogout()">
-            <i class="ti ti-logout"></i> Se déconnecter
-          </button>
-          <p style="font-size:11px;color:var(--text-tertiary);margin-top:10px;">Vos clients et délais sont liés à votre compte et ne sont visibles que par vous.</p>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<script>
-// ─── Configuration Supabase (mêmes valeurs que login.html) ────────────
-const SUPABASE_URL = 'https://xxxxxxxxxxxx.supabase.co';
-const SUPABASE_ANON_KEY = 'COLLER_LA_CLE_ANON_ICI';
-// ────────────────────────────────────────────────────────────────────
-
-let sbClient = null;
-let clients = [];
-let selectedClient = null;
-let currentDoc = null;
-let generatedText = '';
-let docHistory = JSON.parse(localStorage.getItem('lexai_history') || '[]');
-
-// Expose globally so inline onclick still works as fallback
-window.showPage = showPage;
-window.resetGenerate = resetGenerate;
-window.openModal = openModal;
-window.closeModal = closeModal;
-window.saveClient = saveClient;
-window.deleteClient = deleteClient;
-window.toggleClientType = toggleClientType;
-window.resetClientForm = resetClientForm;
-window.clearClient = clearClient;
-window.searchClients = searchClients;
-window.selectClient = selectClient;
-window.generateDocument = generateDocument;
-window.backToSelect = backToSelect;
-window.backToForm = backToForm;
-window.copyDoc = copyDoc;
-window.downloadDoc = downloadDoc;
-window.redownload = redownload;
-window.handleLogout = handleLogout;
-
-// Init
-window.onload = async function() {
-  // ── Vérification de session : redirige vers la connexion si absente ──
-  if (SUPABASE_URL.includes('xxxxxxxxxxxx') || SUPABASE_ANON_KEY.includes('COLLER_LA_CLE')) {
-    alert('Configuration Supabase manquante dans app.html.');
-    return;
-  }
-  sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const { data: { session } } = await sbClient.auth.getSession();
-  if (!session) { window.location.href = 'login.html'; return; }
-
-  const email = session.user.email || '';
-  document.getElementById('user-email').textContent = email;
-  document.getElementById('settings-user-email').textContent = email;
-  document.getElementById('user-avatar').textContent = email.slice(0,2).toUpperCase();
-  document.getElementById('db-status-label').textContent = 'Connecté';
-  document.getElementById('btn-logout').addEventListener('click', handleLogout);
-
-  // Nav event listeners
-  document.querySelectorAll('[data-page]').forEach(btn => {
-    btn.addEventListener('click', function() { showPage(this.getAttribute('data-page')); });
-  });
-  document.querySelectorAll('[data-action="new"]').forEach(btn => {
-    btn.addEventListener('click', function() { showPage('generate'); resetGenerate(); });
-  });
-
-  await loadClients();
-  renderHistory();
-  renderDeadlines();
-};
-
-async function handleLogout() {
-  if (!confirm('Se déconnecter ?')) return;
-  await sbClient.auth.signOut();
-  window.location.href = 'index.html';
-}
-// Note : redirige vers la landing page (index.html) après déconnexion.
-// Pour aller directement au formulaire de connexion, utiliser login.html.
-
-// Clients
-async function loadClients() {
-  if (!sbClient) return;
-  const { data, error } = await sbClient.from('clients').select('*').order('created_at', { ascending: false });
-  if (!error && data) { clients = data; renderClientsGrid(); 
-}
-function renderClientsGrid() {
-  const grid = document.getElementById('clients-grid');
-  if (!clients.length) {
-    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><i class="ti ti-users"></i><p>Aucun client pour l\'instant.<br>Ajoutez votre premier client ci-dessus.</p></div>';
-    return;
-  }
-  grid.innerHTML = clients.map(c => {
-    const name = c.type === 'societe' ? c.raison_sociale : `${c.prenom || ''} ${c.nom || ''}`.trim();
-    const initials = name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
-    const clientDocs = docHistory.filter(h => h.client === name);
-    const clientDelais = deadlines.filter(d => d.clientName === name && d.statut === 'en_cours');
-   const docsHtml = clientDocs.length ? clientDocs.slice(0,3).map(h =>
-  `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-top:0.5px solid var(--border);">
-    <i class="ti ti-file" style="font-size:12px;color:var(--accent);flex-shrink:0;"></i>
-    <span style="font-size:11px;color:var(--text-secondary);flex:1;">${h.type}</span>
-    <span style="font-size:11px;color:var(--text-tertiary);margin-right:4px;">${h.date}</span>
-    <button onclick="redownload(${h.id})" style="border:none;background:none;cursor:pointer;padding:2px 4px;border-radius:4px;" title="Télécharger"><i class="ti ti-download" style="font-size:12px;color:var(--accent);"></i></button>
-  </div>`).join('') : '';
-    const delaisHtml = clientDelais.length ? clientDelais.slice(0,3).map(d => {
-      const badge = urgenceBadge(d.dateEcheance);
-      const echeance = new Date(d.dateEcheance).toLocaleDateString('fr-FR');
-      return `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-top:0.5px solid var(--border);">
-        <i class="ti ti-clock" style="font-size:12px;color:var(--accent);flex-shrink:0;"></i>
-        <span style="font-size:11px;color:var(--text-secondary);flex:1;">${d.label}</span>
-        <span style="background:${badge.bg};color:${badge.color};font-size:10px;padding:2px 6px;border-radius:4px;font-weight:500;">${echeance}</span>
-      </div>`;
-    }).join('') : '';
-    const hasSections = clientDocs.length || clientDelais.length;
-    return `<div class="client-card">
-      <div class="client-card-header">
-        <div class="client-card-avatar">${initials}</div>
-        <div>
-          <div class="client-card-name">${name}</div>
-          <div class="client-card-type">${c.type === 'societe' ? 'Société' : 'Particulier'}${c.ville ? ' · ' + c.ville : ''}</div>
-        </div>
-      </div>
-      <div class="client-card-body">
-        ${c.email ? '<i class="ti ti-mail" style="font-size:12px;vertical-align:-1px;margin-right:4px;"></i>' + c.email + '<br>' : ''}
-        ${c.telephone ? '<i class="ti ti-phone" style="font-size:12px;vertical-align:-1px;margin-right:4px;"></i>' + c.telephone + '<br>' : ''}
-        ${c.adresse ? '<i class="ti ti-map-pin" style="font-size:12px;vertical-align:-1px;margin-right:4px;"></i>' + c.adresse + (c.ville ? ', ' + c.ville : '') : ''}
-      </div>
-      ${hasSections ? `
-      <div style="margin-top:10px;">
-        ${clientDocs.length ? `<div style="font-size:10px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">Documents (${clientDocs.length})</div>${docsHtml}` : ''}
-        ${clientDelais.length ? `<div style="font-size:10px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-top:8px;margin-bottom:2px;">Délais (${clientDelais.length})</div>${delaisHtml}` : ''}
-      </div>` : ''}
-      <div class="client-card-actions">
-        <button class="btn" style="font-size:11px;padding:4px 8px;" onclick="selectClientFromCard(${JSON.stringify(c).replace(/"/g,'&quot;')})"><i class="ti ti-file-plus"></i> Nouveau doc</button>
-        <button class="btn btn-danger" style="font-size:11px;padding:4px 8px;" onclick="deleteClient('${c.id}')"><i class="ti ti-trash"></i></button>
-      </div>
-    </div>`;
-  }).join('');
-}
-}
-function selectClientFromCard(client) {
-  showPage('generate');
-  resetGenerate();
-}
-
-
-async function searchClients(query) {
-  const list = document.getElementById('autocomplete-list');
-  if (!query || query.length < 1) { list.style.display = 'none'; return; }
-  let filtered = clients.filter(c => {
-    const name = c.type === 'societe' ? c.raison_sociale : `${c.prenom||''} ${c.nom||''}`;
-    return name && name.toLowerCase().includes(query.toLowerCase());
-  });
-  list.style.display = 'block';
-  list.innerHTML = filtered.slice(0,6).map(c => {
-    const name = c.type === 'societe' ? c.raison_sociale : `${c.prenom||''} ${c.nom||''}`.trim();
-    const sub = c.ville || c.email || '';
-    const initials = name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
-    return `<div class="autocomplete-item" onclick="selectClient(${JSON.stringify(c).replace(/"/g,'&quot;')})">
-      <div style="width:24px;height:24px;border-radius:50%;background:var(--accent-light);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0;">${initials}</div>
-      <div><div class="ac-name">${name}</div><div class="ac-sub">${sub}</div></div>
-    </div>`;
-  }).join('');
-  list.innerHTML += `<div class="autocomplete-new" onclick="openModal('modal-client');resetClientForm();document.getElementById('autocomplete-list').style.display='none';">
-    <i class="ti ti-plus"></i> Créer "${query}" comme nouveau client
-  </div>`;
-}
-
-function selectClient(client) {
-  selectedClient = client;
-  document.getElementById('autocomplete-list').style.display = 'none';
-  const name = client.type === 'societe' ? client.raison_sociale : `${client.prenom||''} ${client.nom||''}`.trim();
-  const initials = name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
-  document.getElementById('sel-avatar').textContent = initials;
-  document.getElementById('sel-name').textContent = name;
-  document.getElementById('sel-sub').textContent = (client.adresse || '') + (client.ville ? ', ' + client.ville : '');
-  document.getElementById('client-search').style.display = 'none';
-  document.getElementById('client-selected-display').style.display = 'block';
-  prefillForm(client);
-}
-
-function prefillForm(client) {
-  const name = client.type === 'societe' ? client.raison_sociale : `${client.prenom||''} ${client.nom||''}`.trim();
-  const adresse = [client.adresse, client.code_postal, client.ville].filter(Boolean).join(', ');
-  const mappings = {
-    employeur: name, prestataire: name, expediteur: name, bailleur: name,
-    siret: client.siret, adresse: adresse, adresse_bien: adresse,
-    denomination: client.raison_sociale, forme: client.forme_juridique,
-    siege: adresse, gerant: client.representant,
-  };
-  Object.entries(mappings).forEach(([id, val]) => {
-    const el = document.getElementById('field_' + id);
-    if (el && val) {
-      el.value = val;
-      el.closest('.field')?.classList.add('field-prefilled');
-    }
-  });
-}
-
-function clearClient() {
-  selectedClient = null;
-  document.getElementById('client-search').style.display = 'block';
-  document.getElementById('client-search').value = '';
-  document.getElementById('client-selected-display').style.display = 'none';
-  document.querySelectorAll('.field-prefilled input, .field-prefilled select').forEach(el => {
-    el.value = '';
-    el.closest('.field')?.classList.remove('field-prefilled');
-  });
-}
-
-function toggleClientType() {
-  const type = document.getElementById('nc-type').value;
-  const isSoc = type === 'societe';
-  document.getElementById('nc-raison-wrap').style.display = isSoc ? 'flex' : 'none';
-  document.getElementById('nc-siret-wrap').style.display = isSoc ? 'flex' : 'none';
-  document.getElementById('nc-forme-wrap').style.display = isSoc ? 'flex' : 'none';
-}
-
-function resetClientForm() {
-  ['nc-raison','nc-prenom','nc-nom','nc-siret','nc-adresse','nc-cp','nc-ville','nc-email','nc-tel','nc-representant'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
-  document.getElementById('nc-type').value = 'societe';
-  toggleClientType();
-}
-
-async function saveClient() {
-  const type = document.getElementById('nc-type').value;
-  const data = {
-    type,
-    raison_sociale: document.getElementById('nc-raison').value.trim() || null,
-    prenom: document.getElementById('nc-prenom').value.trim() || null,
-    nom: document.getElementById('nc-nom').value.trim() || null,
-    siret: document.getElementById('nc-siret').value.trim() || null,
-    forme_juridique: document.getElementById('nc-forme').value || null,
-    adresse: document.getElementById('nc-adresse').value.trim() || null,
-    code_postal: document.getElementById('nc-cp').value.trim() || null,
-    ville: document.getElementById('nc-ville').value.trim() || null,
-    email: document.getElementById('nc-email').value.trim() || null,
-    telephone: document.getElementById('nc-tel').value.trim() || null,
-    representant: document.getElementById('nc-representant').value.trim() || null,
-  };
-  const name = type === 'societe' ? data.raison_sociale : `${data.prenom||''} ${data.nom||''}`.trim();
-  if (!name) { alert('Veuillez renseigner un nom ou une raison sociale.'); return; }
-  const btn = document.getElementById('btn-save-client');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Enregistrement…';
-  if (sbClient) {
-    const { error } = await sbClient.from('clients').insert([data]);
-    if (error) { alert('Erreur : ' + error.message); btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i> Enregistrer'; return; }
-    await loadClients();
-  } else {
-    clients.unshift({ ...data, id: Date.now().toString() });
-    renderClientsGrid();
-  }
-  btn.disabled = false;
-  btn.innerHTML = '<i class="ti ti-check"></i> Enregistrer';
-  closeModal('modal-client');
-}
-
-async function deleteClient(id) {
-  if (!confirm('Supprimer ce client ?')) return;
-  if (sbClient) {
-    await sbClient.from('clients').delete().eq('id', id);
-    await loadClients();
-  } else {
-    clients = clients.filter(c => c.id !== id);
-    renderClientsGrid();
-  }
-}
-
-// Modal helpers
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.addEventListener('click', e => {
-  if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
-  if (!e.target.closest('.autocomplete-wrap')) document.getElementById('autocomplete-list').style.display = 'none';
-});
-
-// Forms config
-const forms = {
-  contrat_travail: {
-    label:'Contrat de travail', icon:'ti-briefcase', filename:'contrat_travail',
-    fields:[
-      {id:'employeur', label:"Employeur"},
-      {id:'siret', label:'SIRET'},
-      {id:'salarie', label:'Nom du salarié', placeholder:'Jean Dupont'},
-      {id:'poste', label:'Poste occupé', placeholder:'Développeur logiciel'},
-      {id:'type_contrat', label:'Type de contrat', type:'select', options:['CDI','CDD','Temps partiel']},
-      {id:'salaire', label:'Salaire brut mensuel (€)', placeholder:'2 800'},
-      {id:'date_debut', label:'Date de début', type:'date'},
-      {id:'periode_essai', label:"Période d'essai", type:'select', options:['Aucune','1 mois','2 mois','3 mois']},
-      {id:'clauses', label:'Clauses particulières', type:'textarea', placeholder:'Télétravail, véhicule…', full:true},
-    ]
-  },
-  contrat_commercial: {
-    label:'Contrat commercial', icon:'ti-building-store', filename:'contrat_prestation',
-    fields:[
-      {id:'prestataire', label:'Prestataire'},
-      {id:'client', label:'Client', placeholder:'Société XYZ'},
-      {id:'objet', label:'Objet de la prestation', placeholder:'Développement site web'},
-      {id:'montant', label:'Montant HT (€)', placeholder:'8 000'},
-      {id:'duree', label:'Durée', placeholder:'3 mois'},
-      {id:'paiement', label:'Paiement', type:'select', options:['30 jours fin de mois','Acompte 30% + solde','Mensuel']},
-      {id:'obligations', label:'Obligations spécifiques', type:'textarea', full:true},
-    ]
-  },
-  mise_en_demeure: {
-    label:'Mise en demeure', icon:'ti-send', filename:'mise_en_demeure',
-    fields:[
-      {id:'expediteur', label:"Expéditeur"},
-      {id:'destinataire', label:'Destinataire', placeholder:'Société BTP Nord SARL'},
-      {id:'adresse', label:'Adresse du destinataire'},
-      {id:'motif', label:'Motif', type:'select', options:["Inexécution d'une obligation","Impayé","Trouble de jouissance","Autre"]},
-      {id:'montant', label:'Montant réclamé (€)', placeholder:'15 000'},
-      {id:'delai', label:'Délai accordé', type:'select', options:['8 jours','15 jours','30 jours']},
-      {id:'faits', label:'Description des faits', type:'textarea', full:true},
-    ]
-  },
-  statuts: {
-    label:'Statuts de société', icon:'ti-building', filename:'statuts_societe',
-    fields:[
-      {id:'denomination', label:'Dénomination sociale'},
-      {id:'forme', label:'Forme juridique', type:'select', options:['SAS','SARL','SASU','EURL']},
-      {id:'capital', label:'Capital social (€)', placeholder:'10 000'},
-      {id:'siege', label:'Siège social'},
-      {id:'associes', label:"Nombre d'associés", placeholder:'2'},
-      {id:'gerant', label:'Président / Gérant'},
-      {id:'objet', label:'Objet social', type:'textarea', full:true},
-    ]
-  },
-  bail: {
-    label:'Bail', icon:'ti-home', filename:'bail',
-    fields:[
-      {id:'bailleur', label:'Bailleur'},
-      {id:'locataire', label:'Locataire', placeholder:'Jean Moreau'},
-      {id:'adresse_bien', label:'Adresse du bien'},
-      {id:'type_bail', label:'Type de bail', type:'select', options:["Bail d'habitation (3 ans)","Bail commercial (9 ans)","Bail précaire"]},
-      {id:'loyer', label:'Loyer mensuel HC (€)', placeholder:'1 200'},
-      {id:'charges', label:'Charges (€)', placeholder:'80'},
-      {id:'depot', label:'Dépôt de garantie (€)', placeholder:'1 200'},
-      {id:'date_entree', label:"Date d'entrée", type:'date'},
-    ]
-  },
-  conclusions: {
-    label:'Conclusions', icon:'ti-gavel', filename:'conclusions',
-    fields:[
-      {id:'avocat', label:'Avocat plaidant', placeholder:'Me. Sophie Bernard'},
-      {id:'juridiction', label:'Juridiction', type:'select', options:['Tribunal judiciaire',"Cour d'appel","Conseil de prud'hommes","Tribunal de commerce"]},
-      {id:'partie', label:'Partie représentée'},
-      {id:'adverse', label:'Partie adverse', placeholder:'Société Immo Sud'},
-      {id:'demandes', label:'Demandes principales', type:'textarea', full:true},
-      {id:'moyens', label:'Moyens de droit', type:'textarea', full:true},
-    ]
-  }
-};
-
-function showPage(name) {
-  try {
-    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
-    var pageEl = document.getElementById("page-" + name);
-    if (pageEl) pageEl.classList.add("active");
-    var navEl = document.getElementById("nav-" + name);
-    if (navEl) navEl.classList.add("active");
-  var titles = {generate:"Nouveau document", clients:"Clients", history:"Historique", deadlines:"Délais procéduraux", settings:"Paramètres"};
-    document.getElementById("topbar-title").textContent = titles[name] || "LexAI";
-  } catch(e) { console.error("showPage error:", e); }
-}
-
-function resetGenerate() {
-  currentDoc = null; selectedClient = null;
-  document.getElementById('step-type-select').style.display = 'block';
-  document.getElementById('step-form').style.display = 'none';
-  document.getElementById('step-output').style.display = 'none';
-  document.getElementById('step1').className = 'step done';
-  document.getElementById('step2').className = 'step active';
-  document.getElementById('step3').className = 'step';
-}
-
-function selectDoc(type) {
-  currentDoc = type;
-  const f = forms[type];
-  document.getElementById('form-doc-title').textContent = f.label;
-  document.getElementById('step-type-select').style.display = 'none';
-  document.getElementById('step-form').style.display = 'block';
-  document.getElementById('step-output').style.display = 'none';
-  document.getElementById('step2').className = 'step active';
-  document.getElementById('step3').className = 'step';
-  document.getElementById('client-search').style.display = 'block';
-  document.getElementById('client-search').value = '';
-  document.getElementById('client-selected-display').style.display = 'none';
-  selectedClient = null;
-
-  let html = '<div class="form-title"><i class="ti ' + f.icon + '" style="color:var(--accent);font-size:16px;"></i> ' + f.label + '</div><div class="form-grid">';
-  f.fields.forEach(field => {
-    let input = '';
-    if (field.type === 'select') {
-      input = '<select id="field_' + field.id + '"><option value="">— Sélectionner —</option>' + field.options.map(o => '<option>' + o + '</option>').join('') + '</select>';
-    } else if (field.type === 'textarea') {
-      input = '<textarea id="field_' + field.id + '" placeholder="' + (field.placeholder||'') + '"></textarea>';
-    } else if (field.type === 'date') {
-      input = '<input type="date" id="field_' + field.id + '">';
-    } else {
-      input = '<input type="text" id="field_' + field.id + '" placeholder="' + (field.placeholder||'') + '">';
-    }
-    html += '<div class="field' + (field.full ? ' form-full' : '') + '"><label>' + field.label + '</label>' + input + '</div>';
-  });
-  html += '</div>';
-  document.getElementById('form-container').innerHTML = html;
-}
-
-function backToSelect() {
-  document.getElementById('step-type-select').style.display = 'block';
-  document.getElementById('step-form').style.display = 'none';
-  document.getElementById('step1').className = 'step done';
-  document.getElementById('step2').className = 'step active';
-}
-
-function backToForm() {
-  document.getElementById('step-form').style.display = 'block';
-  document.getElementById('step-output').style.display = 'none';
-  document.getElementById('step2').className = 'step active';
-  document.getElementById('step3').className = 'step';
-}
-
-async function generateDocument() {
-  const f = forms[currentDoc];
-  let dataFields = {};
-  f.fields.forEach(field => {
-    const el = document.getElementById('field_' + field.id);
-    if (el) dataFields[field.id] = el.value;
-  });
-  const btn = document.getElementById('gen-btn');
-  btn.innerHTML = '<span class="spinner"></span> Génération…';
-  btn.disabled = true;
-  document.getElementById('step-form').style.display = 'none';
-  document.getElementById('step-output').style.display = 'block';
-  document.getElementById('step2').className = 'step done';
-  document.getElementById('step3').className = 'step active';
-  document.getElementById('output-doc-title').textContent = f.label;
-  const today = new Date().toISOString().slice(0,10);
-  document.getElementById('output-filename').textContent = f.filename + '_' + today + '.txt';
-  const outputEl = document.getElementById('output-body');
-  outputEl.className = 'output-body';
-  outputEl.textContent = 'Rédaction en cours…';
-
-  const infos = f.fields.map(field => {
-    const v = dataFields[field.id];
-    return v ? field.label + ' : ' + v : null;
-  }).filter(Boolean).join('\n');
-  const prompt = `Génère un ${f.label} complet en droit français avec les informations suivantes :\n\n${infos}\n\nDocument professionnel, complet, avec toutes les clauses obligatoires selon la loi française. Format structuré avec articles numérotés.`;
-
-  try {
-    const { data: { session } } = await sbClient.auth.getSession();
-    const resp = await fetch('/api/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({
-        prompt,
-        system: "Tu es un assistant juridique expert en droit français. Génère des documents juridiques professionnels et conformes. Réponds uniquement avec le contenu du document, sans commentaire.",
-      }),
-    });
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error || 'Erreur de génération.');
-    generatedText = data.text || 'Erreur de génération.';
-  } catch(e) {
-    generatedText = 'Erreur : ' + e.message;
-  }
-
-  outputEl.textContent = generatedText;
-  saveToHistory(f.label, selectedClient);
-  btn.innerHTML = '<i class="ti ti-sparkles"></i> Générer le document';
-  btn.disabled = false;
-}
-
-function saveToHistory(docType, client) {
-  const entry = {
-    id: Date.now(),
-    type: docType,
-    client: client ? (client.type === 'societe' ? client.raison_sociale : `${client.prenom||''} ${client.nom||''}`.trim()) : null,
-    date: new Date().toLocaleDateString('fr-FR'),
-    text: generatedText
-  };
-  docHistory.unshift(entry);
-  localStorage.setItem('lexai_history', JSON.stringify(docHistory.slice(0,50)));
-  renderHistory();
- renderClientsGrid(); 
-}
-
-function renderHistory() {
-  const list = document.getElementById('history-list');
-  if (!docHistory.length) {
-    list.innerHTML = '<div class="empty-state"><i class="ti ti-clock"></i><p>Aucun document généré pour l\'instant.</p></div>';
-    return;
-  }
-  const icons = { 'Contrat de travail':'ti-briefcase', 'Contrat commercial':'ti-building-store', 'Mise en demeure':'ti-send', 'Statuts de société':'ti-building', 'Bail':'ti-home', 'Conclusions':'ti-gavel' };
-  list.innerHTML = docHistory.map(h => `
-    <div class="history-item">
-      <div class="history-icon"><i class="ti ${icons[h.type]||'ti-file'}"></i></div>
-      <div style="flex:1;">
-        <div class="history-name">${h.type}${h.client ? ' — ' + h.client : ''}</div>
-        <div class="history-meta">${h.date}</div>
-      </div>
-      <button class="btn" style="font-size:11px;padding:4px 8px;" onclick="redownload(${h.id})"><i class="ti ti-download"></i></button>
-    </div>`).join('');
-}
-
-function redownload(id) {
-  const h = docHistory.find(x => x.id === id);
-  if (!h) return;
-  const blob = new Blob([h.text], {type:'text/plain;charset=utf-8'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = h.type.toLowerCase().replace(/ /g,'_') + '_' + h.date.replace(/\//g,'-') + '.txt';
-  a.click();
-}
-
-function demoDoc(label, data, fields) {
-  const today = new Date().toLocaleDateString('fr-FR');
-  let lines = [label.toUpperCase(), '(Démo — configurez votre clé API dans Paramètres)', '', 'Généré le ' + today, '', '---', ''];
-  fields.forEach(f => { if (data[f.id]) lines.push(f.label + ' : ' + data[f.id]); });
-  lines.push('', '---', '', 'ARTICLE 1 — OBJET\nLe présent document est établi conformément aux dispositions du droit français en vigueur.', '', 'ARTICLE 2 — DURÉE\nLe présent accord prend effet à compter de la date de signature par l\'ensemble des parties.', '', 'ARTICLE 3 — CONDITIONS GÉNÉRALES\nLes parties s\'engagent à respecter l\'ensemble des obligations légales et réglementaires applicables.', '', '---', '', 'Signatures :\n\n_________________________          _________________________');
-  return lines.join('\n');
-}
-
-function copyDoc() {
-  if (generatedText) navigator.clipboard.writeText(generatedText).then(() => alert('Copié !'));
-}
-
-function downloadDoc() {
-  if (!generatedText) return;
-  const blob = new Blob([generatedText], {type:'text/plain;charset=utf-8'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = document.getElementById('output-filename').textContent; a.click();
-}
-</script>
-<script>
-function getJoursFeries(annee) {
-  const paques = (y) => {
-    const a = y % 19, b = Math.floor(y/100), c = y % 100;
-    const d = Math.floor(b/4), e = b%4, f = Math.floor((b+8)/25);
-    const g = Math.floor((b-f+1)/3), h = (19*a+b-d-g+15)%30;
-    const i = Math.floor(c/4), k = c%4, l = (32+2*e+2*i-h-k)%7;
-    const m = Math.floor((a+11*h+22*l)/451);
-    const mois = Math.floor((h+l-7*m+114)/31);
-    const jour = ((h+l-7*m+114)%31)+1;
-    return new Date(y, mois-1, jour);
-  };
-  const P = paques(annee);
-  const d = (m,j) => new Date(annee,m-1,j).toDateString();
-  const offset = (date,n) => { const r=new Date(date); r.setDate(r.getDate()+n); return r.toDateString(); };
-  return new Set([
-    d(1,1), offset(P,1), d(5,1), d(5,8), offset(P,39),
-    offset(P,50), d(7,14), d(8,15), d(11,1), d(11,11), d(12,25),
-  ]);
-}
-
-function addJoursOuvrables(dateDebut, nbJours) {
-  let date = new Date(dateDebut);
-  let compteur = 0;
-  while (compteur < nbJours) {
-    date.setDate(date.getDate() + 1);
-    const feries = getJoursFeries(date.getFullYear());
-    const jour = date.getDay();
-    if (jour !== 0 && jour !== 6 && !feries.has(date.toDateString())) compteur++;
-  }
-  return date;
-}
-
-function addJoursCalendaires(dateDebut, nbJours) {
-  const d = new Date(dateDebut);
-  d.setDate(d.getDate() + nbJours);
-  return d;
-}
-
-const TYPES_ACTES = {
-  cdd_requalification: { label: 'CDD → requalification CDI', delai: 24, unite: 'mois', mode: 'calendaire', source: 'Art. L1471-1 Code du travail' },
-  licenciement_contestation: { label: 'Contestation licenciement', delai: 12, unite: 'mois', mode: 'calendaire', source: 'Art. L1471-1 Code du travail' },
-  preavis_cdi: { label: 'Préavis CDI (cadre)', delai: 3, unite: 'mois', mode: 'calendaire', source: 'Convention collective applicable' },
-  mise_en_demeure_reponse: { label: 'Réponse mise en demeure', delai: 8, unite: 'jours', mode: 'ouvrable', source: 'Usage / contrat' },
-  assignation_comparution: { label: 'Délai de comparution (assignation)', delai: 15, unite: 'jours', mode: 'calendaire', source: 'Art. 855 CPC' },
-  appel_jugement: { label: "Appel d'un jugement", delai: 1, unite: 'mois', mode: 'calendaire', source: 'Art. 538 CPC' },
-  opposition_jugement: { label: 'Opposition à jugement', delai: 1, unite: 'mois', mode: 'calendaire', source: 'Art. 571 CPC' },
-  conclusions_fond: { label: 'Conclusions au fond (appel)', delai: 3, unite: 'mois', mode: 'calendaire', source: 'Art. 908 CPC' },
-  garantie_vices_caches: { label: 'Action vices cachés', delai: 24, unite: 'mois', mode: 'calendaire', source: 'Art. 1648 Code civil' },
-  prescription_commerciale: { label: 'Prescription action commerciale', delai: 5, unite: 'ans', mode: 'calendaire', source: 'Art. L110-4 Code commerce' },
-  conge_bail_commercial: { label: 'Congé bail commercial', delai: 6, unite: 'mois', mode: 'calendaire', source: 'Art. L145-9 Code commerce' },
-  renouvellement_bail: { label: 'Demande renouvellement bail', delai: 6, unite: 'mois', mode: 'calendaire', source: 'Art. L145-10 Code commerce' },
-};
-
-function calculerEcheance(typeActe, dateOrigine) {
-  const config = TYPES_ACTES[typeActe];
-  if (!config) throw new Error("Type d'acte inconnu : " + typeActe);
-  const debut = new Date(dateOrigine);
-  let echeance;
-  if (config.unite === 'jours') {
-    echeance = config.mode === 'ouvrable' ? addJoursOuvrables(debut, config.delai) : addJoursCalendaires(debut, config.delai);
-  } else if (config.unite === 'mois') {
-    echeance = new Date(debut); echeance.setMonth(echeance.getMonth() + config.delai);
-  } else if (config.unite === 'ans') {
-    echeance = new Date(debut); echeance.setFullYear(echeance.getFullYear() + config.delai);
-  }
-  return {
-    typeActe, label: config.label, source: config.source,
-    dateOrigine: debut.toISOString().split('T')[0],
-    dateEcheance: echeance.toISOString().split('T')[0],
-    delaiJours: Math.ceil((echeance - debut) / (1000*60*60*24)),
-  };
-}
-
-async function calculerEcheanceAvecClaude(descriptionActe, dateOrigine) {
-  const apiKey = localStorage.getItem('lexai_api_key');
-  if (!apiKey) throw new Error('Clé API Anthropic manquante');
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514', max_tokens: 300,
-      messages: [{ role: 'user', content: `Tu es un juriste français expert en procédure.\nActe : "${descriptionActe}"\nDate de l'acte : ${dateOrigine}\nRéponds UNIQUEMENT en JSON valide :\n{"delai_jours": 0, "mode": "calendaire", "date_echeance": "YYYY-MM-DD", "source_legale": "...", "explication": "..."}` }]
-    })
-  });
-  const data = await res.json();
-  return JSON.parse(data.content[0].text.trim());
-}
- // ─── Module délais ───────────────────────────────────────────────────────
-let deadlines = JSON.parse(localStorage.getItem('lexai_deadlines') || '[]');
-
-function openModalDeadline() {
-  const sel = document.getElementById('dl-client');
-  sel.innerHTML = '<option value="">— Sélectionner —</option>' +
-    clients.map(c => {
-      const name = c.type === 'societe' ? c.raison_sociale : `${c.prenom||''} ${c.nom||''}`.trim();
-      return `<option value="${c.id}">${name}</option>`;
-    }).join('');
-  document.getElementById('dl-date').value = '';
-  document.getElementById('dl-echeance-preview').value = '';
-  document.getElementById('dl-notes').value = '';
-  document.getElementById('dl-type').value = '';
-  openModal('modal-deadline');
-}
-
-function previewDelai() {
-  const type = document.getElementById('dl-type').value;
-  const date = document.getElementById('dl-date').value;
-  if (!type || !date) return;
-  try {
-    const result = calculerEcheance(type, date);
-    document.getElementById('dl-echeance-preview').value =
-      new Date(result.dateEcheance).toLocaleDateString('fr-FR') +
-      ' (J-' + result.delaiJours + ')';
-  } catch(e) {}
-}
-
-async function saveDeadline() {
-  const clientId = document.getElementById('dl-client').value;
-  const type = document.getElementById('dl-type').value;
-  const date = document.getElementById('dl-date').value;
-  if (!clientId || !type || !date) { alert('Remplissez tous les champs.'); return; }
-  const result = calculerEcheance(type, date);
-  const client = clients.find(c => c.id === clientId);
-  const clientName = client ? (client.type === 'societe' ? client.raison_sociale : `${client.prenom||''} ${client.nom||''}`.trim()) : '';
-  const entry = {
-    id: Date.now().toString(), clientId, clientName,
-    typeActe: type, label: result.label, source: result.source,
-    dateOrigine: date, dateEcheance: result.dateEcheance,
-    notes: document.getElementById('dl-notes').value,
-    statut: 'en_cours'
-  };
-  if (sbClient) {
-    await sbClient.from('deadlines').insert([{
-      client_id: clientId, type_acte: type, intitule: result.label,
-      date_origine: date, delai_jours: result.delaiJours,
-      notes: entry.notes, statut: 'en_cours'
-    }]);
-  }
-  deadlines.unshift(entry);
-  localStorage.setItem('lexai_deadlines', JSON.stringify(deadlines));
-  closeModal('modal-deadline');
-  renderDeadlines();
-}
-
-function urgenceBadge(dateEcheance) {
-  const jours = Math.ceil((new Date(dateEcheance) - new Date()) / (1000*60*60*24));
-  if (jours < 0)  return { label:'Expiré',   bg:'#FEF2F2', color:'#991B1B' };
-  if (jours <= 1)  return { label:'Demain',   bg:'#FEF2F2', color:'#991B1B' };
-  if (jours <= 7)  return { label:`J-${jours}`, bg:'#FFFBEB', color:'#92400E' };
-  if (jours <= 15) return { label:`J-${jours}`, bg:'#EFF6FF', color:'#1D4ED8' };
-  return             { label:`J-${jours}`, bg:'#F0FDF4', color:'#15803D' };
-}
-
-function renderDeadlines() {
-  const list = document.getElementById('deadlines-list');
-  const stats = document.getElementById('deadlines-stats');
-  const actifs = deadlines.filter(d => d.statut === 'en_cours');
-  const urgents = actifs.filter(d => Math.ceil((new Date(d.dateEcheance)-new Date())/(86400000)) <= 7);
-  const expires = deadlines.filter(d => d.statut === 'expire' || Math.ceil((new Date(d.dateEcheance)-new Date())/(86400000)) < 0);
-  stats.innerHTML = [
-    { label:'En cours', val: actifs.length, bg:'var(--bg-info)', color:'var(--text-info)' },
-    { label:'Urgents (<7j)', val: urgents.length, bg:'#FFFBEB', color:'#92400E' },
-    { label:'Expirés', val: expires.length, bg:'#FEF2F2', color:'#991B1B' },
-  ].map(s => `<div style="background:${s.bg};border-radius:var(--radius-md);padding:12px;text-align:center;">
-    <div style="font-size:22px;font-weight:500;color:${s.color};">${s.val}</div>
-    <div style="font-size:11px;color:${s.color};margin-top:2px;">${s.label}</div>
-  </div>`).join('');
-  if (!deadlines.length) {
-    list.innerHTML = '<div class="empty-state"><i class="ti ti-clock"></i><p>Aucun délai pour l\'instant.</p></div>';
-    return;
-  }
-  const sorted = [...deadlines].sort((a,b) => new Date(a.dateEcheance) - new Date(b.dateEcheance));
-  list.innerHTML = sorted.map(d => {
-    const badge = urgenceBadge(d.dateEcheance);
-    const echeance = new Date(d.dateEcheance).toLocaleDateString('fr-FR');
-    return `<div class="history-item">
-      <div class="history-icon"><i class="ti ti-clock"></i></div>
-      <div style="flex:1;">
-        <div class="history-name">${d.label} — ${d.clientName}</div>
-        <div class="history-meta">${d.source} · Échéance : ${echeance}</div>
-        ${d.notes ? '<div class="history-meta">'+d.notes+'</div>' : ''}
-      </div>
-      <span style="background:${badge.bg};color:${badge.color};font-size:11px;padding:3px 8px;border-radius:4px;font-weight:500;white-space:nowrap;">${badge.label}</span>
-      <button class="btn" style="font-size:11px;padding:4px 8px;" onclick="markDone('${d.id}')"><i class="ti ti-check"></i></button>
-    </div>`;
-  }).join('');
-}
-function markDone(id) {
-  deadlines = deadlines.filter(d => d.id !== id);
-  localStorage.setItem('lexai_deadlines', JSON.stringify(deadlines));
-  renderDeadlines();
-}
-window.openModalDeadline = openModalDeadline;
-window.previewDelai = previewDelai;
-window.saveDeadline = saveDeadline;
-window.markDone = markDone;
-window.redownload = redownload;
-</script>
 </body>
 </html>
